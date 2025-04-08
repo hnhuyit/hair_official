@@ -1,18 +1,6 @@
 // src/services/aiService.js
-// import OpenAI from "openai";
 import { config } from "../config/index.js";
-
-// const openai = new OpenAI({
-//   apiKey: config.openaiApiKey
-// });
-
-// import { Configuration, OpenAIApi } from "openai";
 import OpenAI from "openai";
-
-// const configuration = new Configuration({
-//   apiKey: config.openaiApiKey,
-// });
-// const openai = new OpenAIApi(configuration);
 
 const openai = new OpenAI({
   apiKey: config.openaiApiKey
@@ -24,7 +12,6 @@ export async function askAI(message, prompt, history) {
     ? history.filter(msg => msg?.role && typeof msg.content === "string")
     : [];
 
-  // const res = await openai.createChatCompletion({
   const res = await openai.chat.completions.create({
     model: "gpt-4o-mini", // hoặc model khác như "gpt-4" tùy nhu cầu
     messages: [
