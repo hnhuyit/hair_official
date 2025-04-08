@@ -8,6 +8,9 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
 
+// Định nghĩa các endpoint không cần kiểm tra API key
+const allowedPaths = ["/webhook", "/public", "/health"];
+
 // Parse JSON và lưu raw body nếu cần xác thực chữ ký
 app.use(bodyParser.json({
   verify: (req, res, buf) => { req.rawBody = buf.toString("utf8"); }
@@ -15,6 +18,29 @@ app.use(bodyParser.json({
 
 // Static files (nếu có)
 app.use(express.static("public"));
+
+app.use((req, res, next) => {
+  // Nếu đường dẫn nằm trong danh sách allowedPaths thì bỏ qua kiểm tra token
+  if (allowedPaths.includes(req.path)) return next();
+
+  // Lấy giá trị API key từ header và biến môi trường (mặc định "your-secret-token" nếu chưa cài đặt)
+  const apiKeyHeader = req.headers["x-api-key"];
+  const expectedApiKey = process.env.API_KEY || "your-secret-token";
+
+  // Nếu không gửi API key
+  if (!apiKeyHeader) {
+    console.warn(`⚠️ Missing API key for ${req.method} ${req.path}`);
+    return res.status(401).json({ error: "No API key provided" });
+  }
+
+  // Kiểm tra API key có khớp không
+  if (apiKeyHeader !== expectedApiKey) {
+    console.warn(`⚠️ Unauthorized access on ${req.method} ${req.path} with API key: ${apiKeyHeader}`);
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  next();
+});
 
 // Ghi log bằng morgan & middleware custom
 app.use(morgan("dev"));

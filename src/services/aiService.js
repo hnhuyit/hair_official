@@ -19,7 +19,7 @@ export async function askAI(message, prompt, history) {
     ? history.filter(msg => msg?.role && typeof msg.content === "string")
     : [];
 
-  const res = await openai.chat.completions.create({
+  const res = await openai.createChatCompletion({
     model: "gpt-4o-mini", // hoặc model khác như "gpt-4" tùy nhu cầu
     messages: [
       { role: "system", content: prompt },
