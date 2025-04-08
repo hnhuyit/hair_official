@@ -5,7 +5,7 @@ import Airtable from "airtable";
 dotenv.config();
 
 // Cấu hình chung từ .env
-export const config = {
+const config = {
   openaiApiKey: process.env.OPENAI_API_KEY,
   airtableApiKey: process.env.AIRTABLE_API_KEY,
   baseId: process.env.AIRTABLE_BASE_ID || "apptmh0D4kfxxCTn1",
@@ -66,3 +66,6 @@ export async function refreshOAToken() {
 export function getOAToken() {
   return cachedToken;
 }
+
+// Thêm default export cho toàn bộ config nếu cần
+export default config;
