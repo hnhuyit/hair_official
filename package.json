@@ -18,16 +18,17 @@
     ],
     "author": "Your Name",
     "license": "MIT",
-    "dependencies": {
-        "airtable": "^0.12.2",
-        "axios": "^1.8.4",
-        "body-parser": "^2.2.0",
-        "crypto": "^1.0.1",
-        "dotenv": "^16.4.7",
-        "express": "^4.21.2",
-        "fs": "^0.0.1-security",
-        "node-cron": "^3.0.3",
-        "openai": "^4.90.0"
+    "dependencies": {      
+      "airtable": "^0.12.2",
+      "axios": "^1.8.4",
+      "body-parser": "^2.2.0",
+      "crypto": "^1.0.1",
+      "dotenv": "^16.4.7",
+      "express": "^4.21.2",
+      "morgan": "^1.10.0",
+      "fs": "^0.0.1-security",
+      "node-cron": "^3.0.3",
+      "openai": "^4.90.0"
     },
     "devDependencies": {
       "nodemon": "^2.0.20"
