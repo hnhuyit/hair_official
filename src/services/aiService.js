@@ -1,10 +1,17 @@
 // src/services/aiService.js
-import OpenAI from "openai";
+// import OpenAI from "openai";
 import config from "../config/index.js";
 
-const openai = new OpenAI({
-  apiKey: config.openaiApiKey
+// const openai = new OpenAI({
+//   apiKey: config.openaiApiKey
+// });
+
+import { Configuration, OpenAIApi } from "openai";
+
+const configuration = new Configuration({
+  apiKey: config.openaiApiKey,
 });
+const openai = new OpenAIApi(configuration);
 
 export async function askAI(message, prompt, history) {
   // Xử lý lịch sử cuộc đối thoại: lọc những message hợp lệ
