@@ -6,12 +6,17 @@ import { config } from "../config/index.js";
 //   apiKey: config.openaiApiKey
 // });
 
-import { Configuration, OpenAIApi } from "openai";
+// import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
 
-const configuration = new Configuration({
-  apiKey: config.openaiApiKey,
+// const configuration = new Configuration({
+//   apiKey: config.openaiApiKey,
+// });
+// const openai = new OpenAIApi(configuration);
+
+const openai = new OpenAI({
+  apiKey: config.openaiApiKey
 });
-const openai = new OpenAIApi(configuration);
 
 export async function askAI(message, prompt, history) {
   // Xử lý lịch sử cuộc đối thoại: lọc những message hợp lệ
@@ -19,7 +24,8 @@ export async function askAI(message, prompt, history) {
     ? history.filter(msg => msg?.role && typeof msg.content === "string")
     : [];
 
-  const res = await openai.createChatCompletion({
+  // const res = await openai.createChatCompletion({
+  const res = await openai.chat.completions.create({
     model: "gpt-4o-mini", // hoặc model khác như "gpt-4" tùy nhu cầu
     messages: [
       { role: "system", content: prompt },
