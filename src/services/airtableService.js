@@ -1,7 +1,9 @@
 // src/services/airtableService.js
 
-import Airtable from "airtable";
-import {base, config} from "../config/index.js";
+// import Airtable from "airtable";
+// import {base, config} from "../config/index.js";
+import { base } from "../config/index.js";
+
 
 // Thiết lập kết nối đến Airtable với API key và base ID lấy từ config
 // const base = new Airtable({ apiKey: config.airtableApiKey }).base(config.baseId);

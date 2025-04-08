@@ -1,7 +1,7 @@
 // src/controllers/zalo.controller.js
 import { handleAIReply } from "../services/aiResponder.js";
 import { replyZalo } from "../services/zaloService.js";
-import { refreshOAToken, getOAToken, fetchConfigFromAirtable } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
+import { getOAToken, fetchConfigFromAirtable } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
 // Các hàm lưu lịch sử, cập nhật Airtable, … có thể được chuyển vào một module riêng (ví dụ airtableService)
 
 export async function verifyWebhook(req, res) {

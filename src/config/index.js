@@ -69,4 +69,4 @@ export function getOAToken() {
 
 // Thêm default export cho toàn bộ config nếu cần
 // export default config;
-export default { config, base };
+export { config, base };
