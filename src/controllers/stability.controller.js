@@ -7,7 +7,7 @@ import FormData from 'form-data';
 export const imageToVideo = async (req, res) => {
   try {
     const { image_url, seed, cfg_scale, motion_bucket_id } = req.body;
-
+    console.log("image_url", image_url)
     // Lấy dữ liệu ảnh từ URL
     const imageResponse = await fetch(image_url);
     const imageBuffer = await imageResponse.buffer();
@@ -19,6 +19,7 @@ export const imageToVideo = async (req, res) => {
     form.append('cfg_scale', cfg_scale);
     form.append('motion_bucket_id', motion_bucket_id);
 
+    console.log("form", form)
     // Gửi request đến API chuyển đổi image -> video
     const stabilityResponse = await fetch('https://api.stability.ai/v2beta/image-to-video', {
       method: 'POST',
