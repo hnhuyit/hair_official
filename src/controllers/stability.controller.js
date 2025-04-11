@@ -8,8 +8,13 @@ export const imageToVideo = async (req, res) => {
   try {
     const { image_url, seed, cfg_scale, motion_bucket_id } = req.body;
     console.log("image_url", image_url)
+    
     // Lấy dữ liệu ảnh từ URL
     const imageResponse = await fetch(image_url);
+    if (!imageResponse.ok) {
+      console.error("Lỗi khi fetch ảnh:", imageResponse.statusText);
+      return res.status(400).json({ error: 'Không thể tải ảnh từ URL.' });
+    }
     const imageBuffer = await imageResponse.buffer();
 
     // Tạo đối tượng FormData
@@ -19,7 +24,7 @@ export const imageToVideo = async (req, res) => {
     form.append('cfg_scale', cfg_scale);
     form.append('motion_bucket_id', motion_bucket_id);
 
-    console.log("form", form)
+    // console.log("form", form)
     // Gửi request đến API chuyển đổi image -> video
     const stabilityResponse = await fetch('https://api.stability.ai/v2beta/image-to-video', {
       method: 'POST',
@@ -29,6 +34,11 @@ export const imageToVideo = async (req, res) => {
       },
       body: form,
     });
+
+    // Kiểm tra trạng thái của phản hồi Stability API
+    if (!stabilityResponse.ok) {
+      console.error("Lỗi response từ API Stability:", stabilityResponse.status, stabilityResponse.statusText);
+    }
 
     // Lấy phản hồi dưới dạng text trước
     const responseText = await stabilityResponse.text();
