@@ -30,8 +30,18 @@ export const imageToVideo = async (req, res) => {
       body: form,
     });
 
-    const result = await stabilityResponse.json();
-    return res.json(result);
+    // Lấy phản hồi dưới dạng text trước
+    const responseText = await stabilityResponse.text();
+    console.error('Phản hồi từ Stability API:', responseText);
+
+    // Sau đó, nếu bạn chắc chắn rằng phản hồi là JSON thì mới parse
+    try {
+      const result = JSON.parse(responseText);
+      return res.json(result);
+    } catch (err) {
+      console.error('Lỗi parse JSON:', err);
+      return res.status(500).json({ error: 'Không thể parse phản hồi từ Stability API. Kiểm tra log để biết thông tin chi tiết.' });
+    }
   } catch (error) {
     console.error('[imageToVideo error]', error);
     return res.status(500).json({ error: 'Internal server error' });
