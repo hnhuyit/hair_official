@@ -42,7 +42,7 @@ export const imageToVideo = async (req, res) => {
       validateStatus: undefined,
       headers: {
         authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
-        ...data.getHeaders(),
+        ...form.getHeaders(),
       },
       data: form,
     });
