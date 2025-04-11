@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import FormData from 'form-data';
+import axios from "axios";
 
 // Nếu cần, bạn có thể tách service riêng để gọi API Stability, ví dụ:
 // import { generateVideo } from '../services/stability.service.js';
@@ -7,7 +8,7 @@ import FormData from 'form-data';
 export const imageToVideo = async (req, res) => {
   try {
     const { image_url, seed, cfg_scale, motion_bucket_id } = req.body;
-    console.log("image_url", image_url)
+    console.log("image_url", image_url, process.env.STABILITY_API_KEY)
     
     // Lấy dữ liệu ảnh từ URL
     const imageResponse = await fetch(image_url);
@@ -24,15 +25,26 @@ export const imageToVideo = async (req, res) => {
     form.append('cfg_scale', cfg_scale);
     form.append('motion_bucket_id', motion_bucket_id);
 
-    // console.log("form", form)
     // Gửi request đến API chuyển đổi image -> video
-    const stabilityResponse = await fetch('https://api.stability.ai/v2beta/image-to-video', {
-      method: 'POST',
+    // const stabilityResponse = await fetch('https://api.stability.ai/v2beta/image-to-video', {
+    //   method: 'POST',
+    //   validateStatus: undefined,
+    //   headers: {
+    //     Authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
+    //     ...form.getHeaders(),
+    //   },
+    //   body: form,
+    // });
+    
+    const stabilityResponse = await axios.request({
+      url: `https://api.stability.ai/v2beta/image-to-video`,
+      method: "post",
+      validateStatus: undefined,
       headers: {
-        Authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
-        ...form.getHeaders(),
+        authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
+        ...data.getHeaders(),
       },
-      body: form,
+      data: form,
     });
 
     // Kiểm tra trạng thái của phản hồi Stability API
@@ -40,6 +52,8 @@ export const imageToVideo = async (req, res) => {
       console.error("Lỗi response từ API Stability:", stabilityResponse.status, stabilityResponse.statusText);
     }
 
+    
+    console.log("Generation ID:", stabilityResponse.data.id);
     // Lấy phản hồi dưới dạng text trước
     const responseText = await stabilityResponse.text();
     console.error('Phản hồi từ Stability API:', responseText);
