@@ -1,6 +1,19 @@
 // src/services/aiResponder.js
 import { askAI } from "./aiService.js";       // Lấy hàm askAI từ aiService
 import { replyZalo } from "./zaloService.js";   // Lấy hàm replyZalo từ zaloService
+// import { saveMessage, getMessages } from './conversationService.js'; // đường dẫn tùy vị trí
+
+// async function handleUserChat(userId, message) {
+//   const history = await getMessages(userId);
+//   const context = [...history, { role: 'user', content: message }];
+
+//   const aiReply = await callOpenAI(context); // ví dụ hàm gửi context cho AI
+
+//   await saveMessage(userId, { role: 'user', content: message });
+//   await saveMessage(userId, { role: 'assistant', content: aiReply });
+
+//   return aiReply;
+// }
 
 export async function handleAIReply(userId, userMessage, prompt, history, token) {
   try {

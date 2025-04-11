@@ -2,6 +2,7 @@
 import express from "express";
 import crypto from "crypto";
 import { verifyWebhook, handleZaloWebhook } from "../controllers/zalo.controller.js";
+import { imageToVideo } from '../controllers/stability.controller.js';
 import { normalizePhone } from "../utils/hashUtil.js";
 
 const router = express.Router();
@@ -23,5 +24,7 @@ router.post("/hash-users-daily", async (req, res) => {
   const hash = crypto.createHash("sha256").update(formattedPhone).digest("hex");
   res.json({ hashed_phone: hash, formatted_phone: formattedPhone });
 });
+
+router.post('/image-to-video', imageToVideo);
 
 export default router;
