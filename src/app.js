@@ -9,7 +9,7 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 const app = express();
 
 // Định nghĩa các endpoint không cần kiểm tra API key
-const allowedPaths = ["/webhook", "/public", "/health"];
+const allowedPaths = ["/webhook", "/messaging-webhook", "/public", "/health"];
 
 // Parse JSON và lưu raw body nếu cần xác thực chữ ký
 app.use(bodyParser.json({
@@ -48,6 +48,11 @@ app.use(logRequest);
 
 // Đăng ký route – các endpoint liên quan đến webhook và hash
 app.use("/", webhookRoutes);
+
+// Định nghĩa các endpoint khác
+app.get('/health', (req, res) => {
+  res.json({ status: "ok" });
+});
 
 // Các route khác (vd: homepage)
 app.get("/", (req, res) => {
