@@ -18,8 +18,8 @@ router.get("/fb-webhook", verifyWebhookFB);
 
 // POST xử lý webhook từ Zalo
 router.post("/webhook", handleZaloWebhook);
-router.post("/ig-webhook", handleIGWebhook);
-router.post("/fb-webhook", handleFBWebhook);
+// router.post("/ig-webhook", handleIGWebhook);
+// router.post("/fb-webhook", handleFBWebhook);
 router.post("/messaging-webhook", handleMessagerWebhook);
 
 // Route thêm ví dụ: hash người dùng
