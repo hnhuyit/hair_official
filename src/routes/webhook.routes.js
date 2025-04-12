@@ -2,6 +2,7 @@
 import express from "express";
 import crypto from "crypto";
 import { verifyWebhook, handleZaloWebhook } from "../controllers/zalo.controller.js";
+import { verifyWebhookIG, verifyWebhookFB, verifyWebhookMessager, handleMessagerWebhook } from "../controllers/meta.controller.js";
 import { imageToVideo } from '../controllers/stability.controller.js';
 import { normalizePhone } from "../utils/hashUtil.js";
 
@@ -9,9 +10,15 @@ const router = express.Router();
 
 // GET xác thực webhook (nếu cần)
 router.get("/webhook", verifyWebhook);
+router.get("/messaging-webhook", verifyWebhookMessager);
+
+// pending
+router.get("/ig-webhook", verifyWebhookIG);
+router.get("/fb-webhook", verifyWebhookFB);
 
 // POST xử lý webhook từ Zalo
 router.post("/webhook", handleZaloWebhook);
+router.post("/messaging-webhook", handleMessagerWebhook);
 
 // Route thêm ví dụ: hash người dùng
 router.post("/hash-users-daily", async (req, res) => {
