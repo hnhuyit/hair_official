@@ -8,15 +8,34 @@ import axios from "axios";
 // Các hàm lưu lịch sử, cập nhật Airtable, … có thể được chuyển vào một module riêng (ví dụ airtableService)
 
 export async function verifyWebhookIG(req, res) {
-  // Đơn giản trả về echostr nếu có logic xác thực cho GET webhook
-  const { hub: { challenge } } = req.query;
-  return res.status(200).send(challenge || "IG Webhook verified");
+  // // Đơn giản trả về echostr nếu có logic xác thực cho GET webhook
+  // const { hub: { challenge } } = req.query;
+  // return res.status(200).send(challenge || "IG Webhook verified");
+
+  // Parse the query params
+  let mode = req.query["hub.mode"];
+  let token = req.query["hub.verify_token"];
+  let challenge = req.query["hub.challenge"];
+
+  // Check if a token and mode is in the query string of the request
+  if (mode && token) {
+    // Check the mode and token sent is correct
+    if (mode === "subscribe" && token === "1234567890") {
+      // Respond with the challenge token from the request
+      console.log("WEBHOOK_VERIFIED");
+      res.status(200).send(challenge);
+    } else {
+      // Respond with '403 Forbidden' if verify tokens do not match
+      res.status(403).send("Forbidden – Token mismatch");
+    }
+  }
+
 }
 
 export async function verifyWebhookFB(req, res) {
   // Đơn giản trả về echostr nếu có logic xác thực cho GET webhook
   const { hub: { challenge } } = req.query;
-  return res.status(200).send(challenge || "IG Webhook verified");
+  return res.status(200).send(challenge || "FB Webhook verified");
 }
 
 
