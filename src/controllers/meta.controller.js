@@ -84,7 +84,7 @@ export async function handleMessagerWebhook(req, res, next) {
   if (body.object === 'page') {
       body.entry.forEach(entry => {
           const webhook_event = entry.messaging[0];
-          console.log("New Event:", webhook_event, PAGE_ACCESS_TOKEN);
+          console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
 
           const sender_psid = webhook_event.sender.id;
           if (webhook_event.message) {
@@ -149,7 +149,7 @@ async function callSendAPI(sender_psid, response) {
 
   try {
     const res = await axios.post(
-      `https://graph.facebook.com/v22.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+      `https://graph.facebook.com/v22.0/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
       request_body
     );
     console.log("✅ Tin nhắn đã gửi thành công!", res.data);
