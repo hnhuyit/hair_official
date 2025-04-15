@@ -45,16 +45,14 @@ export async function saveMessage({ userId, role, message, platform = "unknown"}
  */
 export async function getRecentMessages(userId, platform = null, limit = 100) {
   try {
-    // Xây dựng filter cho Airtable
-    let filter = `{UserID} = "${userId}"`;
-    if (platform) {
-      filter += ` AND {Platform} = "${platform}"`;
-    }
+    const formula = platform
+      ? `AND({UserID} = "${userId}", {Platform} = "${platform}")`
+      : `{UserID} = "${userId}"`;
 
     const records = await base(CHAT_HISTORY_TABLE)
       .select({
         // Lọc theo userId (bạn cần đảm bảo tên trường trong Airtable là "UserID")
-        filterByFormula: filter,
+        filterByFormula: formula,
         sort: [{ field: "Timestamp", direction: "desc" }],
         maxRecords: limit
       })
