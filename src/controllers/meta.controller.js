@@ -92,7 +92,7 @@ export async function handleFacebookWebhook(req, res, next) {
       const webhook_event = entry.messaging?.[0];
       const sender_psid = webhook_event?.sender?.id;
       const recipient_id = webhook_event?.recipient?.id;
-      const userMessage = webhook_event?.message?.text;
+      const message = webhook_event?.message;
 
       
       // ❌ Bỏ qua nếu không có sender hoặc sender là chính page bot
@@ -104,7 +104,8 @@ export async function handleFacebookWebhook(req, res, next) {
       // if (!sender_psid) continue;
 
       // ✅ Chỉ xử lý nếu là tin nhắn dạng text
-      if (userMessage) {
+      if (message?.text) {
+        const userMessage = message.text;
         console.log(`📥 Messenger > User gửi: "${userMessage}"`);
 
         // Lưu tin nhắn người dùng
@@ -136,7 +137,6 @@ export async function handleFacebookWebhook(req, res, next) {
           platform
         });
       } else {
-        // Tin nhắn không phải text
         // 🛑 Bỏ qua các loại tin nhắn không phải text
         console.log("📎 Bỏ qua message không phải text:", message);
         // await replyMessenger(
