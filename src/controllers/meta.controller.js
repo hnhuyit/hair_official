@@ -91,10 +91,19 @@ export async function handleFacebookWebhook(req, res, next) {
     for (const entry of body.entry) {
       const webhook_event = entry.messaging?.[0];
       const sender_psid = webhook_event?.sender?.id;
+      const recipient_id = webhook_event?.recipient?.id;
       const userMessage = webhook_event?.message?.text;
 
-      if (!sender_psid) continue;
+      
+      // ❌ Bỏ qua nếu không có sender hoặc sender là chính page bot
+      if (!sender_psid || sender_psid === "543096242213723") {
+        console.log("⏭️ Bỏ qua event từ chính page bot hoặc thiếu sender.");
+        continue;
+      }
 
+      // if (!sender_psid) continue;
+
+      // ✅ Chỉ xử lý nếu là tin nhắn dạng text
       if (userMessage) {
         console.log(`📥 Messenger > User gửi: "${userMessage}"`);
 
@@ -128,11 +137,13 @@ export async function handleFacebookWebhook(req, res, next) {
         });
       } else {
         // Tin nhắn không phải text
-        await replyMessenger(
-          sender_psid,
-          "❗ Hiện tại Hair Consulting chỉ hỗ trợ tin nhắn văn bản.",
-          token
-        );
+        // 🛑 Bỏ qua các loại tin nhắn không phải text
+        console.log("📎 Bỏ qua message không phải text:", message);
+        // await replyMessenger(
+        //   sender_psid,
+        //   "❗ Hiện tại Hair Consulting chỉ hỗ trợ tin nhắn văn bản.",
+        //   token
+        // );
       }
     }
 
