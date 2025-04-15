@@ -20,6 +20,7 @@ export async function handleZaloWebhook(req, res, next) {
     const config = await fetchConfigFromAirtable();
     const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
     const token = getOAToken(); // Token đã được refresh theo cron
+    const platform = "zalo";
 
     // Lưu lịch sử tin nhắn, cập nhật interaction nếu cần (bạn có thể tách riêng sang airtableService)
     await saveMessage({ userId, role: "user", message: userMessage, platform });
