@@ -6,7 +6,7 @@ export async function handleIGMessage(sender_psid, message) {
   let response;
 
   if (message.text) {
-    response = { text: `💬 Bạn vừa nhắn: "${message.text}". LUXX IG xin chào bạn! 🌟` };
+    response = { text: `💬 Hair Consulting, chào bạn! 🌟` };
   } else {
     response = { text: "LUXX hiện chỉ phản hồi tin nhắn dạng văn bản trên IG." };
   }

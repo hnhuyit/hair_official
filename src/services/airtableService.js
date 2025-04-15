@@ -19,12 +19,13 @@ const CHAT_HISTORY_TABLE = "ChatHistory";
  * @param {string} params.message - Nội dung tin nhắn.
  * @returns {Promise<Object>} - Thông tin record vừa tạo.
  */
-export async function saveMessage({ userId, role, message }) {
+export async function saveMessage({ userId, role, message, platform = "unknown"}) {
   try {
     const record = await base(CHAT_HISTORY_TABLE).create({
       UserID: userId,
       Role: role,
       Message: message,
+      Platform: platform,
       Timestamp: new Date().toISOString() // Dùng định dạng ISO để Airtable hiểu
     });
     console.log("✅ Saved message record:", record);
@@ -42,12 +43,18 @@ export async function saveMessage({ userId, role, message }) {
  * @param {number} [limit=100] - Số lượng tối đa tin nhắn lấy về.
  * @returns {Promise<Array>} - Mảng các tin nhắn với dạng { role, content, timestamp }.
  */
-export async function getRecentMessages(userId, limit = 100) {
+export async function getRecentMessages(userId, platform = null, limit = 100) {
   try {
+    // Xây dựng filter cho Airtable
+    let filter = `{UserID} = "${userId}"`;
+    if (platform) {
+      filter += ` AND {Platform} = "${platform}"`;
+    }
+
     const records = await base(CHAT_HISTORY_TABLE)
       .select({
         // Lọc theo userId (bạn cần đảm bảo tên trường trong Airtable là "UserID")
-        filterByFormula: `{UserID} = "${userId}"`,
+        filterByFormula: filter,
         sort: [{ field: "Timestamp", direction: "desc" }],
         maxRecords: limit
       })

@@ -1,11 +1,9 @@
 // src/controllers/zalo.controller.js
-import axios from "axios";
 import { handleIGMessage, handleIGPostback } from "../services/instagramService.js";
-// import { handleAIReply } from "../services/aiResponder.js";
-// import { replyZalo } from "../services/zaloService.js";
-// import { refreshOAToken, getOAToken, fetchConfigFromAirtable } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
-
-// import { saveMessage, getRecentMessages } from "../services/airtableService.js";
+import { handleAIReply } from "../services/aiResponder.js";
+import { replyMessenger  } from "../services/zaloService.js";
+import { fetchConfigFromAirtable } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
+import { saveMessage, getRecentMessages } from "../services/airtableService.js";
 // Các hàm lưu lịch sử, cập nhật Airtable, … có thể được chuyển vào một module riêng (ví dụ airtableService)
 
 export async function verifyWebhookIG(req, res) {
@@ -77,25 +75,127 @@ export async function verifyWebhookMessager(req, res) {
     }
   }
 }
+export async function handleFacebookWebhook(req, res, next) {
+  try {
+    const body = req.body;
+
+    if (body.object !== "page") {
+      return res.sendStatus(404);
+    }
+
+    const token = process.env.PAGE_ACCESS_TOKEN; // Facebook Page Token (hoặc dùng process.env.PAGE_ACCESS_TOKEN)
+    const config = await fetchConfigFromAirtable();
+    const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
+    const platform = "facebook";
+
+    for (const entry of body.entry) {
+      const webhook_event = entry.messaging?.[0];
+      const sender_psid = webhook_event?.sender?.id;
+      const userMessage = webhook_event?.message?.text;
+
+      if (!sender_psid) continue;
+
+      if (userMessage) {
+        console.log(`📥 Messenger > User gửi: "${userMessage}"`);
+
+        // Lưu tin nhắn người dùng
+        await saveMessage({
+          userId: sender_psid,
+          role: "user",
+          message: userMessage,
+          platform
+        });
+
+        // Lấy lịch sử
+        const history = await getRecentMessages(sender_psid, platform);
+
+        // Gọi AI và gửi phản hồi
+        const aiReply = await handleAIReply(
+          sender_psid,
+          userMessage,
+          SYSTEM_PROMPT,
+          history,
+          token,
+          platform
+        );
+
+        // Lưu phản hồi AI
+        await saveMessage({
+          userId: sender_psid,
+          role: "assistant",
+          message: aiReply,
+          platform
+        });
+      } else {
+        // Tin nhắn không phải text
+        await replyMessenger(
+          sender_psid,
+          "❗ Hiện tại Hair Consulting chỉ hỗ trợ tin nhắn văn bản.",
+          token
+        );
+      }
+    }
+
+    res.status(200).send("EVENT_RECEIVED");
+  } catch (err) {
+    console.error("🔥 Lỗi webhook Messenger:", err);
+    next(err);
+  }
+}
 
 export async function handleMessagerWebhook(req, res) {
-  const body = req.body;
+  try {
+    const body = req.body;
+    
+    if (body.object !== 'page') {
+      return res.sendStatus(404);
+    }
 
-  if (body.object === 'page') {
-      body.entry.forEach(entry => {
-          const webhook_event = entry.messaging[0];
-          console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
+    // body.entry.forEach(entry => {
+    //     const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
+    //     const sender_psid = webhook_event.sender.id;
 
-          const sender_psid = webhook_event.sender.id;
-          if (webhook_event.message) {
-            handleMessage(sender_psid, webhook_event.message);
-          } else if (webhook_event.postback) {
-            handlePostback(sender_psid, webhook_event.postback);
-          }
-      });
-      res.status(200).send('EVENT_RECEIVED');
-  } else {
-      res.sendStatus(404);
+    //     if (webhook_event.message) {
+    //       handleMessage(sender_psid, webhook_event.message);
+    //     } else if (webhook_event.postback) {
+    //       handlePostback(sender_psid, webhook_event.postback);
+    //     }
+    // });
+
+    for (const entry of body.entry) {
+      const webhook_event = entry.messaging[0];
+      const sender_psid = webhook_event.sender.id;
+
+      if (webhook_event.message && webhook_event.message.text) {
+        const userMessage = webhook_event.message.text;
+
+        // 1. Lấy cấu hình hệ thống (ví dụ như SYSTEM_PROMPT)
+        const config = await fetchConfigFromAirtable();
+        const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
+
+        // 2. Lưu lịch sử người dùng
+        await saveMessage({ userId: sender_psid, role: "user", message: userMessage, platform: "facebook"});
+
+        // 3. Lấy lịch sử gần đây
+        const history = await getRecentMessages(sender_psid, "facebook");
+
+        // 4. Gửi lên OpenAI
+        const aiReply = await handleAIReply(sender_psid, userMessage, SYSTEM_PROMPT, history, process.env.PAGE_ACCESS_TOKEN);
+
+        // 5. Lưu phản hồi
+        await saveMessage({ userId: sender_psid, role: "assistant", message: aiReply, platform: "facebook" });
+
+        // 6. Gửi lại cho người dùng qua Messenger
+        await replyMessenger(sender_psid, aiReply, process.env.PAGE_ACCESS_TOKEN);
+      } else {
+        await replyMessenger(sender_psid, `❗ Hiện tại, AI chỉ hỗ trợ tin nhắn dạng văn bản.`, process.env.PAGE_ACCESS_TOKEN);
+      }
+    }
+
+    res.status(200).send('EVENT_RECEIVED');
+  } catch (err) {
+    console.error("🔥 Lỗi webhook Messenger:", err);
+    next(err);
   }
 }
 
@@ -133,60 +233,60 @@ export async function handleIGWebhook(req, res) {
 }
 
 
-function handlePostback(sender_psid, postback) {
-  const payload = postback.payload;
-  console.log("🧠 Postback từ người dùng:", payload);
+// function handlePostback(sender_psid, postback) {
+//   const payload = postback.payload;
+//   console.log("🧠 Postback từ người dùng:", payload);
 
-  let response;
+//   let response;
 
-  if (payload === 'GET_STARTED') {
-    response = { text: "Chào mừng bạn đến với LUXX! 💅 Hãy nhắn 'menu' để xem dịch vụ." };
-  } else if (payload === 'VIEW_SERVICES') {
-    response = { text: "Dưới đây là các dịch vụ của LUXX Spa...\n🦶 Pedicure, ✋ Manicure, 💅 Nail Art, v.v..." };
-  } else {
-    response = { text: `Bạn vừa bấm nút có payload: "${payload}"` };
-  }
+//   if (payload === 'GET_STARTED') {
+//     response = { text: "Chào mừng bạn đến với LUXX! 💅 Hãy nhắn 'menu' để xem dịch vụ." };
+//   } else if (payload === 'VIEW_SERVICES') {
+//     response = { text: "Dưới đây là các dịch vụ của LUXX Spa...\n🦶 Pedicure, ✋ Manicure, 💅 Nail Art, v.v..." };
+//   } else {
+//     response = { text: `Bạn vừa bấm nút có payload: "${payload}"` };
+//   }
 
-  callSendAPI(sender_psid, response);
-}
+//   callSendAPI(sender_psid, response);
+// }
 
-function handleMessage(sender_psid, received_message) {
-  console.log("Message from", sender_psid, ":", received_message.text);
-  // Ở đây bạn có thể gọi API gửi tin nhắn phản hồi
-  let response;
+// function handleMessage(sender_psid, received_message) {
+//   console.log("Message from", sender_psid, ":", received_message.text);
+//   // Ở đây bạn có thể gọi API gửi tin nhắn phản hồi
+//   let response;
 
-  if (received_message.text) {
-    // Xử lý text bình thường
-    response = {
-      "text": `Bạn vừa nói: "${received_message.text}". LUXX cảm ơn bạn đã nhắn tin! 🌸`
-    };
-  } else {
-    // Trường hợp không phải tin nhắn text (ảnh, audio,...)
-    response = {
-      "text": "LUXX hiện tại chỉ tiếp nhận tin nhắn dạng văn bản. Hẹn gặp bạn sau nhé! 💅"
-    };
-  }
+//   if (received_message.text) {
+//     // Xử lý text bình thường
+//     response = {
+//       "text": `Bạn vừa nói: "${received_message.text}". LUXX cảm ơn bạn đã nhắn tin! 🌸`
+//     };
+//   } else {
+//     // Trường hợp không phải tin nhắn text (ảnh, audio,...)
+//     response = {
+//       "text": "LUXX hiện tại chỉ tiếp nhận tin nhắn dạng văn bản. Hẹn gặp bạn sau nhé! 💅"
+//     };
+//   }
 
-  // Gửi phản hồi
-  callSendAPI(sender_psid, response);
-}
+//   // Gửi phản hồi
+//   callSendAPI(sender_psid, response);
+// }
 
-async function callSendAPI(sender_psid, response) {
-  const request_body = {
-    recipient: {
-      id: sender_psid
-    },
-    messaging_type: "RESPONSE",
-    message: response
-  };
+// async function callSendAPI(sender_psid, response) {
+//   const request_body = {
+//     recipient: {
+//       id: sender_psid
+//     },
+//     messaging_type: "RESPONSE",
+//     message: response
+//   };
 
-  try {
-    const res = await axios.post(
-      `https://graph.facebook.com/v22.0/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
-      request_body
-    );
-    console.log("✅ Tin nhắn đã gửi thành công!", res.data);
-  } catch (err) {
-    console.error(`❌ Gửi tin nhắn cho ${sender_psid} thất bại:`, err.response ? err.response.data : err.message);
-  }
-}
+//   try {
+//     const res = await axios.post(
+//       `https://graph.facebook.com/v22.0/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+//       request_body
+//     );
+//     console.log("✅ Tin nhắn đã gửi thành công!", res.data);
+//   } catch (err) {
+//     console.error(`❌ Gửi tin nhắn cho ${sender_psid} thất bại:`, err.response ? err.response.data : err.message);
+//   }
+// }
