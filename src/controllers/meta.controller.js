@@ -1,5 +1,6 @@
 // src/controllers/zalo.controller.js
 import axios from "axios";
+import { handleIGMessage, handleIGPostback } from "../services/instagramService.js";
 // import { handleAIReply } from "../services/aiResponder.js";
 // import { replyZalo } from "../services/zaloService.js";
 // import { refreshOAToken, getOAToken, fetchConfigFromAirtable } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
@@ -56,7 +57,6 @@ export async function verifyWebhookFB(req, res) {
   }
 }
 
-
 export async function verifyWebhookMessager(req, res) {
   
   // Parse the query params
@@ -78,7 +78,7 @@ export async function verifyWebhookMessager(req, res) {
   }
 }
 
-export async function handleMessagerWebhook(req, res, next) {
+export async function handleMessagerWebhook(req, res) {
   const body = req.body;
 
   if (body.object === 'page') {
@@ -96,6 +96,30 @@ export async function handleMessagerWebhook(req, res, next) {
       res.status(200).send('EVENT_RECEIVED');
   } else {
       res.sendStatus(404);
+  }
+}
+
+export async function handleIGWebhook(req, res) {
+  const body = req.body;
+
+  if (body.object === 'instagram') {
+    for (const entry of body.entry) {
+      const changes = entry.messaging || [];
+
+      for (const event of changes) {
+        const sender_psid = event.sender.id;
+
+        if (event.message) {
+          await handleIGMessage(sender_psid, event.message);
+        } else if (event.postback) {
+          await handleIGPostback(sender_psid, event.postback);
+        }
+      }
+    }
+
+    res.status(200).send("IG_EVENT_RECEIVED");
+  } else {
+    res.sendStatus(404);
   }
 }
 
