@@ -41,7 +41,7 @@ async function sendIGReply(sender_psid, response) {
 
   try {
     const res = await axios.post(
-      `https://graph.facebook.com/v18.0/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+      `https://graph.facebook.com/v22.0/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
       body
     );
     console.log("✅ IG reply sent:", res.data);
