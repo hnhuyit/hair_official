@@ -101,24 +101,33 @@ export async function handleMessagerWebhook(req, res) {
 
 export async function handleIGWebhook(req, res) {
   const body = req.body;
+  console.log("📥 [IG Webhook] Payload nhận được:", JSON.stringify(body, null, 2));
 
   if (body.object === 'instagram') {
     for (const entry of body.entry) {
+      console.log("📌 Entry IG:", JSON.stringify(entry, null, 2));
       const changes = entry.messaging || [];
 
       for (const event of changes) {
+        console.log("🔄 IG Event:", JSON.stringify(event, null, 2));
         const sender_psid = event.sender.id;
+        console.log("👤 IG Sender PSID:", sender_psid);
 
         if (event.message) {
+          console.log("📩 IG Message content:", event.message);
           await handleIGMessage(sender_psid, event.message);
         } else if (event.postback) {
+          console.log("🔘 IG Postback content:", event.postback);
           await handleIGPostback(sender_psid, event.postback);
+        } else {
+          console.log("❓ Không phải message hoặc postback:", event);
         }
       }
     }
 
     res.status(200).send("IG_EVENT_RECEIVED");
   } else {
+    console.warn("⚠️ Webhook không phải từ IG:", body.object);
     res.sendStatus(404);
   }
 }

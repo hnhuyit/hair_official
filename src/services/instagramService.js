@@ -2,6 +2,7 @@
 import axios from "axios";
 
 export async function handleIGMessage(sender_psid, message) {
+  console.log("📩 [IG] Nhận message từ:", sender_psid, "Nội dung:", message);
   let response;
 
   if (message.text) {
@@ -28,6 +29,10 @@ export async function handleIGPostback(sender_psid, postback) {
 }
 
 async function sendIGReply(sender_psid, response) {
+  if (!sender_psid || !response) {
+    console.error("❌ sender_psid hoặc response không hợp lệ:", sender_psid, response);
+    return;
+  }
   const body = {
     recipient: { id: sender_psid },
     messaging_type: "RESPONSE",
