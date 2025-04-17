@@ -163,10 +163,18 @@ export async function handleFacebookWebhook(req, res, next) {
         if (change.field === "feed" && value.item === "comment" && value.verb === "add") {
           const commentId = value.comment_id;
           const postId = value.post_id;
+          const parentId = value.parent_id;
 
           const senderId = value.from?.id;
           // const senderName = value.from?.name;
           const message = value.message;
+
+          
+          // ❌ Nếu là comment trả lời (reply) → bỏ qua
+          if (parentId !== postId) {
+            console.log("⏭️ Bỏ qua comment reply (comment cấp 2):", commentId);
+            continue;
+          }
 
           if (!senderId) {
             console.warn("❌ Không xác định được senderId từ comment:", value);
