@@ -1,7 +1,7 @@
 // src/controllers/zalo.controller.js
 import { handleAIReply } from "../services/aiResponder.js";
 import { replyZalo } from "../services/zaloService.js";
-import { refreshOAToken, getOAToken, fetchConfigFromAirtable } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
+import { refreshOAToken, getOAToken, fetchConfigFromAirtable, updateLastInteractionOnlyIfNewDay} from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
 import { saveMessage, getRecentMessages } from "../services/airtableService.js";
 // Các hàm lưu lịch sử, cập nhật Airtable, … có thể được chuyển vào một module riêng (ví dụ airtableService)
 
@@ -24,7 +24,7 @@ export async function handleZaloWebhook(req, res, next) {
 
     // Lưu lịch sử tin nhắn, cập nhật interaction nếu cần (bạn có thể tách riêng sang airtableService)
     await saveMessage({ userId, role: "user", message: userMessage, platform });
-    // await updateLastInteractionOnlyIfNewDay(userId, event_name);
+    await updateLastInteractionOnlyIfNewDay(userId, event_name, platform);
     
     const history = await getRecentMessages(userId, platform);
     if (event_name === "user_send_text") {

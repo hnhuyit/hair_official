@@ -15,6 +15,7 @@ const config = {
 
 // Thiết lập Airtable base
 const base = new Airtable({ apiKey: config.airtableApiKey }).base(config.baseId);
+const TABLE_NAME = "Customers";
 
 // Lưu trữ token hiện tại (có thể khởi tạo từ biến môi trường)
 let cachedToken = config.oaAccessToken || "";
@@ -25,6 +26,7 @@ let cachedToken = config.oaAccessToken || "";
  *   - name: tên cấu hình (ví dụ "OA_ACCESS_TOKEN")
  *   - key: giá trị của cấu hình đó.
  */
+
 export async function fetchConfigFromAirtable() {
   try {
     const tableName = "Meta";
@@ -66,6 +68,71 @@ export async function refreshOAToken() {
 export function getOAToken() {
   return cachedToken;
 }
+
+export async function updateLastInteractionOnlyIfNewDay(userId, event_name, platform = "unknown") {
+  try {
+    const todayISOString = new Date().toISOString();
+    const today = todayISOString.slice(0, 10); // yyyy-mm-dd
+    const platformTag = platform.toLowerCase();
+
+    const filterFormula = `AND(
+      {ZaloUID} = '${userId}',
+      {platform} = '${platformTag}'
+    )`;
+
+    const records = await base(TABLE_NAME)
+      .select({
+        filterByFormula: filterFormula,
+        maxRecords: 1,
+      })
+      .firstPage();
+
+    if (records.length === 0) {
+      console.warn("⚠️ Không tìm thấy user → tạo mới:", userId, platformTag);
+
+      await base(TABLE_NAME).create([
+        {
+          fields: {
+            ZaloUID: userId,
+            platform: platformTag,
+            last_event: event_name,
+            LastInteraction: todayISOString,
+          },
+        },
+      ]);
+
+      console.log("✅ Đã tạo mới user:", userId, platformTag);
+      return;
+    }
+
+    const record = records[0];
+    const oldDate = record.fields.LastInteraction;
+
+    if (oldDate) {
+      const lastDate = new Date(oldDate).toISOString().slice(0, 10);
+      if (lastDate === today) {
+        console.log("🟡 Đã tương tác hôm nay → không cần update:", userId);
+        return;
+      }
+    }
+
+    // ✅ Cập nhật nếu khác ngày
+    await base(TABLE_NAME).update([
+      {
+        id: record.id,
+        fields: {
+          LastInteraction: todayISOString,
+          last_event: event_name,
+        },
+      },
+    ]);
+
+    console.log("✅ Đã update LastInteraction mới cho:", userId, platformTag);
+  } catch (err) {
+    console.error("🔥 Lỗi khi xử lý LastInteraction:", err);
+  }
+}
+
 
 // Thêm default export cho toàn bộ config nếu cần
 // export default config;

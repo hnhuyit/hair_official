@@ -2,7 +2,7 @@
 import { handleIGMessage, handleIGPostback } from "../services/instagramService.js";
 import { handleAIReply } from "../services/aiResponder.js";
 import { replyMessenger  } from "../services/zaloService.js";
-import { fetchConfigFromAirtable } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
+import { fetchConfigFromAirtable, updateLastInteractionOnlyIfNewDay } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
 import { saveMessage, getRecentMessages } from "../services/airtableService.js";
 // Các hàm lưu lịch sử, cập nhật Airtable, … có thể được chuyển vào một module riêng (ví dụ airtableService)
 
@@ -115,6 +115,9 @@ export async function handleFacebookWebhook(req, res, next) {
           message: userMessage,
           platform
         });
+
+        // ✅ Lưu lần tương tác gần nhất
+        await updateLastInteractionOnlyIfNewDay(sender_psid, "message_received", platform);
 
         // Lấy lịch sử
         const history = await getRecentMessages(sender_psid, platform);
