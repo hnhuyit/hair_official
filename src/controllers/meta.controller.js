@@ -2,6 +2,7 @@
 import { handleIGMessage, handleIGPostback } from "../services/instagramService.js";
 import { handleAIReply } from "../services/aiResponder.js";
 import { replyMessenger  } from "../services/zaloService.js";
+import { replyToComment  } from "../services/facebookService.js";
 import { fetchConfigFromAirtable, updateLastInteractionOnlyIfNewDay } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
 import { saveMessage, getRecentMessages } from "../services/airtableService.js";
 // Các hàm lưu lịch sử, cập nhật Airtable, … có thể được chuyển vào một module riêng (ví dụ airtableService)
@@ -90,66 +91,104 @@ export async function handleFacebookWebhook(req, res, next) {
 
     for (const entry of body.entry) {
       const webhook_event = entry.messaging?.[0];
-      const sender_psid = webhook_event?.sender?.id;
-      const recipient_id = webhook_event?.recipient?.id;
-      const message = webhook_event?.message;
+      const changes = entry.changes || [];
+
 
       
-      // ❌ Bỏ qua nếu không có sender hoặc sender là chính page bot
-      if (!sender_psid || sender_psid === "543096242213723") {
-        console.log("⏭️ Bỏ qua event từ chính page bot hoặc thiếu sender.");
-        continue;
+      // ✅ Xử lý tin nhắn Messenger như trước
+      if (webhook_event) {
+        const sender_psid = webhook_event?.sender?.id;
+        // const recipient_id = webhook_event?.recipient?.id;
+        const message = webhook_event?.message;
+
+        // ❌ Bỏ qua nếu không có sender hoặc sender là chính page bot
+        if (!sender_psid || sender_psid === "543096242213723") {
+          console.log("⏭️ Bỏ qua event từ chính page bot hoặc thiếu sender.");
+          continue;
+        }
+
+        // if (!sender_psid) continue;
+
+        // ✅ Chỉ xử lý nếu là tin nhắn dạng text
+        if (message?.text) {
+          const userMessage = message.text;
+          console.log(`📥 Messenger > User gửi: "${userMessage}"`);
+
+          // Lưu tin nhắn người dùng
+          await saveMessage({
+            userId: sender_psid,
+            role: "user",
+            message: userMessage,
+            platform
+          });
+
+          // ✅ Lưu lần tương tác gần nhất
+          await updateLastInteractionOnlyIfNewDay(sender_psid, "message_received", platform);
+
+          // Lấy lịch sử
+          const history = await getRecentMessages(sender_psid, platform);
+
+          // Gọi AI và gửi phản hồi
+          const aiReply = await handleAIReply(
+            sender_psid,
+            userMessage,
+            SYSTEM_PROMPT,
+            history,
+            token,
+            platform
+          );
+
+          // Lưu phản hồi AI
+          await saveMessage({
+            userId: sender_psid,
+            role: "assistant",
+            message: aiReply,
+            platform
+          });
+        } else {
+          // 🛑 Bỏ qua các loại tin nhắn không phải text
+          console.log("📎 Bỏ qua message không phải text:", message);
+          // await replyMessenger(
+          //   sender_psid,
+          //   "❗ Hiện tại Hair Consulting chỉ hỗ trợ tin nhắn văn bản.",
+          //   token
+          // );
+        }
       }
 
-      // if (!sender_psid) continue;
+      // ✅ Xử lý comment từ bài viết (feed webhook)
+      for (const change of changes) {
+        const value = change.value;
 
-      // ✅ Chỉ xử lý nếu là tin nhắn dạng text
-      if (message?.text) {
-        const userMessage = message.text;
-        console.log(`📥 Messenger > User gửi: "${userMessage}"`);
+        if (change.field === "feed" && value.item === "comment" && value.verb === "add") {
+          const commentId = value.comment_id;
+          const postId = value.post_id;
+          const senderId = value.sender_id;
+          const message = value.message;
 
-        // Lưu tin nhắn người dùng
-        await saveMessage({
-          userId: sender_psid,
-          role: "user",
-          message: userMessage,
-          platform
-        });
+          console.log("💬 Comment mới:", {
+            senderId,
+            commentId,
+            postId,
+            message
+          });
 
-        // ✅ Lưu lần tương tác gần nhất
-        await updateLastInteractionOnlyIfNewDay(sender_psid, "message_received", platform);
+          await saveMessage({
+            userId: senderId,
+            role: "user",
+            message,
+            platform
+          });
 
-        // Lấy lịch sử
-        const history = await getRecentMessages(sender_psid, platform);
+          await updateLastInteractionOnlyIfNewDay(senderId, "comment_received", platform);
 
-        // Gọi AI và gửi phản hồi
-        const aiReply = await handleAIReply(
-          sender_psid,
-          userMessage,
-          SYSTEM_PROMPT,
-          history,
-          token,
-          platform
-        );
-
-        // Lưu phản hồi AI
-        await saveMessage({
-          userId: sender_psid,
-          role: "assistant",
-          message: aiReply,
-          platform
-        });
-      } else {
-        // 🛑 Bỏ qua các loại tin nhắn không phải text
-        console.log("📎 Bỏ qua message không phải text:", message);
-        // await replyMessenger(
-        //   sender_psid,
-        //   "❗ Hiện tại Hair Consulting chỉ hỗ trợ tin nhắn văn bản.",
-        //   token
-        // );
+          // 👉 Nếu bạn muốn phản hồi comment bằng AI hoặc gửi comment lại:
+          const aiCommentReply = await handleAIReply(senderId, message, SYSTEM_PROMPT, [], token, platform);
+          await replyToComment(commentId, aiCommentReply, token); // cần viết thêm hàm này nếu cần
+        }
       }
+
     }
-
     res.status(200).send("EVENT_RECEIVED");
   } catch (err) {
     console.error("🔥 Lỗi webhook Messenger:", err);
