@@ -168,33 +168,33 @@ export async function handleFacebookWebhook(req, res, next) {
           
           // 🚫 Nếu senderId là ID của chính page → bỏ qua
           const PAGE_ID = entry.id; // từ entry.id chính là ID page
-          if (senderId === PAGE_ID) {
+          if (senderId === "543096242213723") {
             console.log("⏭️ Bỏ qua comment do chính Page đăng.");
             continue;
           }
 
           // ✅ Còn lại là comment từ người dùng
-          console.log("💬 Comment người dùng:", message);
+          console.log("💬 Comment người dùng:", message, PAGE_ID, senderId, value);
 
-          console.log("💬 Comment mới:", {
-            senderId,
-            commentId,
-            postId,
-            message
-          });
+          // console.log("💬 Comment mới:", {
+          //   senderId,
+          //   commentId,
+          //   postId,
+          //   message
+          // });
 
-          await saveMessage({
-            userId: senderId,
-            role: "user",
-            message,
-            platform
-          });
+          // await saveMessage({
+          //   userId: senderId,
+          //   role: "user",
+          //   message,
+          //   platform
+          // });
 
-          await updateLastInteractionOnlyIfNewDay(senderId, "comment_received", platform);
+          // await updateLastInteractionOnlyIfNewDay(senderId, "comment_received", platform);
 
-          // 👉 Nếu bạn muốn phản hồi comment bằng AI hoặc gửi comment lại:
-          const aiCommentReply = await handleAIReply(senderId, message, SYSTEM_PROMPT, [], token, platform);
-          await replyToComment(commentId, aiCommentReply, token); // cần viết thêm hàm này nếu cần
+          // // 👉 Nếu bạn muốn phản hồi comment bằng AI hoặc gửi comment lại:
+          // const aiCommentReply = await handleAIReply(senderId, message, SYSTEM_PROMPT, [], token, platform);
+          // await replyToComment(commentId, aiCommentReply, token); // cần viết thêm hàm này nếu cần
         }
       }
 
