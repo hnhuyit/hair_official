@@ -165,6 +165,16 @@ export async function handleFacebookWebhook(req, res, next) {
           const postId = value.post_id;
           const senderId = value.sender_id;
           const message = value.message;
+          
+          // 🚫 Nếu senderId là ID của chính page → bỏ qua
+          const PAGE_ID = entry.id; // từ entry.id chính là ID page
+          if (senderId === PAGE_ID) {
+            console.log("⏭️ Bỏ qua comment do chính Page đăng.");
+            continue;
+          }
+
+          // ✅ Còn lại là comment từ người dùng
+          console.log("💬 Comment người dùng:", message);
 
           console.log("💬 Comment mới:", {
             senderId,
