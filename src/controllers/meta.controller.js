@@ -201,6 +201,15 @@ export async function handleFacebookWebhook(req, res, next) {
 
           // 👉 Nếu bạn muốn phản hồi comment bằng AI hoặc gửi comment lại:
           const aiCommentReply = await handleAIReply(senderId, message, SYSTEM_PROMPT, [], token, platform);
+
+          // Lưu phản hồi AI
+          await saveMessage({
+            userId: senderId,
+            role: "assistant",
+            message: aiCommentReply,
+            platform
+          });
+
           await replyToComment(commentId, aiCommentReply, token); // cần viết thêm hàm này nếu cần
         }
       }
