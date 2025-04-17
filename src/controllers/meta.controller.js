@@ -207,8 +207,11 @@ export async function handleFacebookWebhook(req, res, next) {
 
           await updateLastInteractionOnlyIfNewDay(senderId, "comment_received", platform);
 
+          // Lấy lịch sử
+          const history = await getRecentMessages(senderId, platform);
+
           // 👉 Nếu bạn muốn phản hồi comment bằng AI hoặc gửi comment lại:
-          const aiCommentReply = await handleAIReply(senderId, message, SYSTEM_PROMPT, [], token, platform);
+          const aiCommentReply = await handleAIReply(senderId, message, SYSTEM_PROMPT, history, token, platform);
 
           // Lưu phản hồi AI
           await saveMessage({
