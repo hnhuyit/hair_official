@@ -94,6 +94,7 @@ export async function updateLastInteractionOnlyIfNewDay(userId, event_name, plat
         {
           fields: {
             ZaloUID: userId,
+            // Name: userName,
             platform: platformTag,
             last_event: event_name,
             LastInteraction: todayISOString,

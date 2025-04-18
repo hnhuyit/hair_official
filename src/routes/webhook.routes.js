@@ -3,6 +3,7 @@ import express from "express";
 import crypto from "crypto";
 import { verifyWebhook, handleZaloWebhook } from "../controllers/zalo.controller.js";
 import { verifyWebhookIG, verifyWebhookFB, handleIGWebhook, handleFacebookWebhook } from "../controllers/meta.controller.js";
+import { verifyWebhookAnnaFB } from "../controllers/clients.controller.js";
 import { imageToVideo } from '../controllers/stability.controller.js';
 import { normalizePhone } from "../utils/hashUtil.js";
 
@@ -20,6 +21,11 @@ router.post("/webhook", handleZaloWebhook);
 router.post("/ig-webhook", handleIGWebhook);
 router.post("/fb-webhook", handleFacebookWebhook);
 // router.post("/messaging-webhook", handleMessagerWebhook);
+
+
+router.get("/webhook-anna-fb", verifyWebhookAnnaFB);
+// router.get("/webhook-anna", verifyWebhookAnna);
+
 
 // Route thêm ví dụ: hash người dùng
 router.post("/hash-users-daily", async (req, res) => {
