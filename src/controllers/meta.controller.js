@@ -86,6 +86,13 @@ export async function handleFacebookWebhook(req, res, next) {
 
     const token = process.env.PAGE_ACCESS_TOKEN; // Facebook Page Token (hoặc dùng process.env.PAGE_ACCESS_TOKEN)
     const config = await fetchConfigFromAirtable();
+    
+    // Kiểm tra trạng thái bot
+    if (config.bot_status !== "active") {
+      console.log("🚫 Bot đang tắt, không xử lý phản hồi.");
+      return res.sendStatus(200);
+    }
+
     const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
     const platform = "facebook";
 

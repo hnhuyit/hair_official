@@ -18,6 +18,13 @@ export async function handleZaloWebhook(req, res, next) {
     const userMessage = message.text;
     // Giả sử bạn có hàm fetchConfigFromAirtable để lấy SYSTEM_PROMPT và các cấu hình khác
     const config = await fetchConfigFromAirtable();
+
+    // Kiểm tra trạng thái bot
+    if (config.bot_status !== "active") {
+      console.log("🚫 Bot đang tắt, không xử lý phản hồi.");
+      return res.sendStatus(200);
+    }
+
     const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
     const token = getOAToken(); // Token đã được refresh theo cron
     const platform = "zalo";
