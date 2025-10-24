@@ -2,7 +2,7 @@
 import express from "express";
 import crypto from "crypto";
 import { verifyWebhook, handleZaloWebhook } from "../controllers/zalo.controller.js";
-import { verifyWebhookIG, verifyWebhookFB, verifyWebhookWA, handleIGWebhook, handleFacebookWebhook } from "../controllers/meta.controller.js";
+import { verifyWebhookIG, verifyWebhookFB, verifyWebhookWA, handleIGWebhook, handleFacebookWebhook, handleWAWebhook } from "../controllers/meta.controller.js";
 import { verifyWebhookAnnaFB } from "../controllers/clients.controller.js";
 import { imageToVideo } from '../controllers/stability.controller.js';
 import { normalizePhone } from "../utils/hashUtil.js";
@@ -21,6 +21,7 @@ router.get("/wa-webhook", verifyWebhookWA);
 router.post("/webhook", handleZaloWebhook);
 router.post("/ig-webhook", handleIGWebhook);
 router.post("/fb-webhook", handleFacebookWebhook);
+router.post("/wa-webhook", handleWAWebhook);
 // router.post("/messaging-webhook", handleMessagerWebhook);
 
 
