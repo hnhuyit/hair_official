@@ -355,35 +355,49 @@ export async function handleIGWebhook(req, res) {
 }
 
 export async function handleWAWebhook(req, res) {
-  const body = req.body;
-  console.log("📥 [WA Webhook] Payload nhận được:", JSON.stringify(body, null, 2));
+  try {
+    const body = req.body;
 
-  if (body.object === 'instagram') {
-    // for (const entry of body.entry) {
-    //   console.log("📌 Entry IG:", JSON.stringify(entry, null, 2));
-    //   const changes = entry.messaging || [];
+    // Chỉ nhận từ WhatsApp Business
+    if (body?.object !== "whatsapp_business_account") {
+      return res.sendStatus(404);
+    }
 
-    //   for (const event of changes) {
-    //     console.log("🔄 IG Event:", JSON.stringify(event, null, 2));
-    //     const sender_psid = event.sender.id;
-    //     console.log("👤 IG Sender PSID:", sender_psid);
+    // Trích message đầu tiên (đủ dùng cho case đơn giản)
+    const change = body.entry?.[0]?.changes?.[0]?.value || {};
+    const msg = change.messages?.[0];
+    const contact = change.contacts?.[0];
+    const phone_number_id = change.metadata?.phone_number_id;
 
-    //     if (event.message) {
-    //       console.log("📩 IG Message content:", event.message);
-    //       await handleIGMessage(sender_psid, event.message);
-    //     } else if (event.postback) {
-    //       console.log("🔘 IG Postback content:", event.postback);
-    //       await handleIGPostback(sender_psid, event.postback);
-    //     } else {
-    //       console.log("❓ Không phải message hoặc postback:", event);
-    //     }
-    //   }
-    // }
+    if (!msg) return res.sendStatus(200); // không có message thì bỏ qua
 
-    // res.status(200).send("IG_EVENT_RECEIVED");
-  } else {
-    console.warn("⚠️ Webhook không phải từ WA:", body.object);
-    res.sendStatus(404);
+    // Rút gọn thông tin cần gửi sang Airtable
+    const payload = {
+      source: "whatsapp",
+      wa_id: msg.from,                           // số người gửi (E.164, ví dụ 8490...)
+      name: contact?.profile?.name || null,
+      type: msg.type,                            // text | interactive | image | ...
+      text: msg.type === "text" ? (msg.text?.body || "") : null,
+      interactive_id: msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || null,
+      interactive_title: msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || null,
+      media_id: msg.image?.id || msg.document?.id || null,
+      timestamp: msg.timestamp ? new Date(Number(msg.timestamp) * 1000).toISOString() : new Date().toISOString(),
+      phone_number_id,                           // id số WA Business của bạn
+      raw: msg                                   // nếu muốn, Airtable có thể lưu vào Long text
+    };
+
+    // Forward sang Airtable Automation Webhook
+    await fetch("https://hooks.airtable.com/workflows/v1/genericWebhook/app8QrLwvbj6L6Mw2/wfl8C3pwhXh2uCUv0/wtrc1gvrVlqlOwfBT", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    // Trả 200 sớm để Meta không retry
+    return res.sendStatus(200);
+  } catch (e) {
+    console.error("WA → Airtable forward error:", e);
+    return res.sendStatus(500);
   }
 }
 
