@@ -265,6 +265,64 @@ export async function handleFacebookWebhook(req, res, next) {
   }
 }
 
+export async function handleWithAIAgent(req, res) {
+  try {
+    const body = req.body;
+    
+    if (body.object !== 'page') {
+      return res.sendStatus(404);
+    }
+
+    console.log("handleWithAIAgent", handleWithAIAgent)
+
+    // body.entry.forEach(entry => {
+    //     const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
+    //     const sender_psid = webhook_event.sender.id;
+
+    //     if (webhook_event.message) {
+    //       handleMessage(sender_psid, webhook_event.message);
+    //     } else if (webhook_event.postback) {
+    //       handlePostback(sender_psid, webhook_event.postback);
+    //     }
+    // });
+
+    // for (const entry of body.entry) {
+    //   const webhook_event = entry.messaging[0];
+    //   const sender_psid = webhook_event.sender.id;
+
+    //   if (webhook_event.message && webhook_event.message.text) {
+    //     const userMessage = webhook_event.message.text;
+
+    //     // 1. Lấy cấu hình hệ thống (ví dụ như SYSTEM_PROMPT)
+    //     const config = await fetchConfigFromAirtable();
+    //     const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
+
+    //     // 2. Lưu lịch sử người dùng
+    //     await saveMessage({ userId: sender_psid, role: "user", message: userMessage, platform: "facebook"});
+
+    //     // 3. Lấy lịch sử gần đây
+    //     const history = await getRecentMessages(sender_psid, "facebook");
+
+    //     // 4. Gửi lên OpenAI
+    //     const aiReply = await handleAIReply(sender_psid, userMessage, SYSTEM_PROMPT, history, process.env.PAGE_ACCESS_TOKEN);
+
+    //     // 5. Lưu phản hồi
+    //     await saveMessage({ userId: sender_psid, role: "assistant", message: aiReply, platform: "facebook" });
+
+    //     // 6. Gửi lại cho người dùng qua Messenger
+    //     await replyMessenger(sender_psid, aiReply, process.env.PAGE_ACCESS_TOKEN);
+    //   } else {
+    //     await replyMessenger(sender_psid, `❗ Hiện tại, AI chỉ hỗ trợ tin nhắn dạng văn bản.`, process.env.PAGE_ACCESS_TOKEN);
+    //   }
+    // }
+
+    res.status(200).send('EVENT_RECEIVED');
+  } catch (err) {
+    console.error("🔥 Lỗi webhook Messenger:", err);
+    next(err);
+  }
+}
+
 export async function handleMessagerWebhook(req, res) {
   try {
     const body = req.body;
