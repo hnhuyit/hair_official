@@ -114,6 +114,8 @@ export async function askAI(message, prompt, history, platform = "zalo") {
 //fixed
 export async function callAgentWithTools({ model, input, tools, toolHandlers }) {
   const toolTrace = [];
+  
+  console.log("TOOLS SENT:", JSON.stringify(tools, null, 2));
 
   let resp = await openai.responses.create({
     model,
@@ -126,15 +128,11 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
     const toolResults = [];
     for (const call of toolCalls) {
-      // ✅ tương thích cả 2 dạng
-      const name = call.name || call.function?.name;
-      const rawArgs = call.arguments ?? call.function?.arguments ?? {};
-
-      // ✅ args có thể là string JSON hoặc object
+      const name = call.name;
+      const rawArgs = call.arguments ?? "{}";
       const args = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
 
       const handler = toolHandlers[name];
-
       const result = handler
         ? await handler(args)
         : { ok: false, error: `No handler for tool: ${name}` };

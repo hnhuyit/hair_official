@@ -72,56 +72,21 @@ export async function handleAIReply(userId, userMessage, prompt, history, token,
 }
 
 const tools = [
-  // {
-  //   type: "function",
-  //   function: {
-  //     name: "lookup_customer",
-  //     description: "Tra cứu khách trong CRM theo userId (PSID) hoặc phone",
-  //     parameters: {
-  //       type: "object",
-  //       properties: {
-  //         userId: { type: "string" },
-  //         phone: { type: "string" }
-  //       },
-  //       required: ["userId"]
-  //     }
-  //   }
-  // },
-  // {
-  //   type: "function",
-  //   function: {
-  //     name: "create_booking",
-  //     description: "Tạo booking khi khách muốn đặt lịch",
-  //     parameters: {
-  //       type: "object",
-  //       properties: {
-  //         userId: { type: "string" },
-  //         service: { type: "string", description: "Ví dụ: nail, pedicure, headspa..." },
-  //         datetime_iso: { type: "string", description: "ISO8601. Nếu chưa rõ thì để trống và hỏi lại." },
-  //         phone: { type: "string" },
-  //         note: { type: "string" }
-  //       },
-  //       required: ["userId", "service"]
-  //     }
-  //   }
-  // },
   {
     type: "function",
-    function: {
-      name: "create_booking_airtable",
-      description: "Tạo booking khi đã có đủ tên, dịch vụ, giờ và số điện thoại",
-      parameters: {
-        type: "object",
-        properties: {
-          service: { type: "string" },
-          datetime_iso: { type: "string", description: "ISO8601 (+07)" },
-          phone: { type: "string" },
-          name: { type: "string" },
-          email: { type: "string" },
-          note: { type: "string" }
-        },
-        required: ["service", "datetime_iso", "phone", "name"]
-      }
+    name: "create_booking_airtable",
+    description: "Tạo booking khi đã có đủ tên, dịch vụ, giờ và số điện thoại",
+    parameters: {
+      type: "object",
+      properties: {
+        service: { type: "string" },
+        datetime_iso: { type: "string", description: "ISO8601 (+07)" },
+        phone: { type: "string" },
+        name: { type: "string" },
+        email: { type: "string" },
+        note: { type: "string" }
+      },
+      required: ["service", "datetime_iso", "phone", "name"]
     }
   }
 ];
@@ -180,3 +145,38 @@ function buildInput({ platform, userId, userMessage, systemPrompt, history }) {
   ];
   return messages;
 }
+
+
+// {
+//   type: "function",
+//   function: {
+//     name: "lookup_customer",
+//     description: "Tra cứu khách trong CRM theo userId (PSID) hoặc phone",
+//     parameters: {
+//       type: "object",
+//       properties: {
+//         userId: { type: "string" },
+//         phone: { type: "string" }
+//       },
+//       required: ["userId"]
+//     }
+//   }
+// },
+// {
+//   type: "function",
+//   function: {
+//     name: "create_booking",
+//     description: "Tạo booking khi khách muốn đặt lịch",
+//     parameters: {
+//       type: "object",
+//       properties: {
+//         userId: { type: "string" },
+//         service: { type: "string", description: "Ví dụ: nail, pedicure, headspa..." },
+//         datetime_iso: { type: "string", description: "ISO8601. Nếu chưa rõ thì để trống và hỏi lại." },
+//         phone: { type: "string" },
+//         note: { type: "string" }
+//       },
+//       required: ["userId", "service"]
+//     }
+//   }
+// },
