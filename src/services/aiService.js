@@ -122,7 +122,7 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
     // ✅ tương thích nhiều kiểu output
     const toolCalls = output.filter(
-      o => o.type === "tool_call" || o.type === "function_call"
+      o => o.type === "function_call"
     );
 
     if (toolCalls.length === 0) break;
@@ -142,7 +142,7 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
       toolTrace.push({ name, args, result });
 
       toolResults.push({
-        type: "tool_result",
+        type: "function_call_output",
         tool_call_id: call.id,
         output: JSON.stringify(result)
       });
