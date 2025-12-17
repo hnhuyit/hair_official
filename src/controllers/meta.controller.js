@@ -317,7 +317,7 @@ export async function handleWithAIAgent(req, res, next) {
         // 핵심: agent + function calling
         const { replyText, toolTrace } = await runAgent({
           platform: "facebook",
-          userId: psid,
+          userId: sender_psid,
           userMessage: text,
           systemPrompt: SYSTEM_PROMPT,
           history
