@@ -1,8 +1,8 @@
 // src/services/aiResponder.js
 import { callAgentWithTools } from "./aiService.js";
 import { createBooking } from "./bookingService.js";
-import { lookupCustomer, createLead } from "./airtableService.js"; // hoặc crmService riêng
-
+import { lookupCustomer  } from "./airtableService.js"; // hoặc crmService riêng
+//createLead
 import { askAI } from "./aiService.js";
 import { replyZalo, replyMessenger } from "./zaloService.js";
 
