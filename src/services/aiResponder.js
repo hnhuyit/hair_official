@@ -106,40 +106,19 @@ const tools = [
   //   }
   // },
   {
-    type: "function",
-    function: {
-      name: "create_booking_airtable",
-      description: "Ghi booking khi đã có đủ tên, dịch vụ, giờ và số điện thoại",
-      parameters: {
-        type: "object",
-        properties: {
-          service: {
-            type: "string",
-            description: "Tên dịch vụ (vd: nail, pedicure, head spa)"
-          },
-          datetime_iso: {
-            type: "string",
-            description: "Thời gian đặt lịch dạng ISO8601 (+07)"
-          },
-          phone: {
-            type: "string",
-            description: "Số điện thoại khách hàng"
-          },
-          name: {
-            type: "string",
-            description: "Tên khách hàng"
-          },
-          email: {
-            type: "string",
-            description: "Email khách hàng (optional)"
-          },
-          note: {
-            type: "string",
-            description: "Ghi chú thêm (optional)"
-          }
-        },
-        required: ["service", "datetime_iso", "phone", "name"]
-      }
+    name: "create_booking_airtable",
+    description: "Tạo booking khi đã có đủ tên, dịch vụ, giờ và số điện thoại",
+    parameters: {
+      type: "object",
+      properties: {
+        service: { type: "string" },
+        datetime_iso: { type: "string", description: "ISO8601 (+07)" },
+        phone: { type: "string" },
+        name: { type: "string" },
+        email: { type: "string" },
+        note: { type: "string" }
+      },
+      required: ["service", "datetime_iso", "phone", "name"]
     }
   }
 ];
