@@ -318,7 +318,7 @@ export async function handleWithAIAgent(req, res, next) {
         const { replyText, toolTrace } = await runAgent({
           platform: "facebook",
           userId: sender_psid,
-          userMessage: text,
+          userMessage: userMessage,
           systemPrompt: SYSTEM_PROMPT,
           history
         });
