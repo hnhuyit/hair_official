@@ -10,6 +10,98 @@ import { base } from "../config/index.js";
 
 // Tên bảng chứa lịch sử chat trong Airtable
 const CHAT_HISTORY_TABLE = "ChatHistory";
+const CUSTOMER_TABLE = "Customers";
+const LEAD_TABLE = "Leads";
+
+/**
+ * Tra cứu khách hàng theo UserID (PSID) hoặc Phone
+ * @param {Object} params
+ * @param {string} params.userId
+ * @param {string} [params.phone]
+ */
+export async function lookupCustomer({ userId, phone = null }) {
+  try {
+    let formula = `{UserID} = "${userId}"`;
+
+    if (phone) {
+      formula = `OR({UserID} = "${userId}", {Phone} = "${phone}")`;
+    }
+
+    const records = await base(CUSTOMER_TABLE)
+      .select({
+        filterByFormula: formula,
+        maxRecords: 1
+      })
+      .firstPage();
+
+    if (!records || records.length === 0) {
+      return { found: false };
+    }
+
+    const record = records[0];
+
+    return {
+      found: true,
+      customer: {
+        id: record.id,
+        userId: record.get("UserID"),
+        name: record.get("FullName"),
+        phone: record.get("Phone"),
+        status: record.get("Status"),
+        platform: record.get("Platform")
+      }
+    };
+  } catch (error) {
+    console.error("🔥 lookupCustomer error:", error);
+    throw error;
+  }
+}
+
+/**
+ * Tạo lead mới nếu chưa có customer
+ * @param {Object} params
+ * @param {string} params.userId
+ * @param {string} [params.fullName]
+ * @param {string} [params.phone]
+ * @param {string} [params.platform]
+ * @param {string} [params.note]
+ */
+export async function createLead({
+  userId,
+  fullName = "Unknown",
+  phone = "",
+  platform = "facebook",
+  note = ""
+}) {
+  try {
+    const record = await base(LEAD_TABLE).create({
+      UserID: userId,
+      FullName: fullName,
+      Phone: phone,
+      Platform: platform,
+      Source: "AI",
+      Status: "NEW",
+      Note: note,
+      CreatedAt: new Date().toISOString(),
+      LastInteraction: new Date().toISOString()
+    });
+
+    return {
+      ok: true,
+      lead: {
+        id: record.id,
+        userId,
+        fullName,
+        phone,
+        platform
+      }
+    };
+  } catch (error) {
+    console.error("🔥 createLead error:", error);
+    throw error;
+  }
+}
+
 
 /**
  * Lưu một tin nhắn (message) của người dùng hoặc trợ lý vào bảng ChatHistory.
