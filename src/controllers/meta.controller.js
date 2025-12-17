@@ -332,7 +332,7 @@ export async function handleWithAIAgent(req, res, next) {
         // (optional) log toolTrace để debug booking tool calls
         if (toolTrace?.length) console.log("toolTrace:", toolTrace);
       } else {
-        await replyMessenger(sender_psid, `❗ Hiện tại, AI chỉ hỗ trợ tin nhắn dạng văn bản.`, process.env.PAGE_ACCESS_TOKEN);
+        // await replyMessenger(sender_psid, `❗ Hiện tại, AI chỉ hỗ trợ tin nhắn dạng văn bản.`, process.env.PAGE_ACCESS_TOKEN);
       }
     }
 
