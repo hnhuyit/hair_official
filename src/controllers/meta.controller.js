@@ -3,7 +3,7 @@ import { handleIGMessage, handleIGPostback } from "../services/instagramService.
 import { handleAIReply, runAgent } from "../services/aiResponder.js";
 // import { callAgentWithTools } from "../services/aiService.js";
 // import { createBooking } from "../services/bookingService.js";
-// import { isDuplicated, markProcessed } from "../utils/dedupStore.js";
+import { isDuplicated, markProcessed } from "../utils/dedupStore.js";
 
 import { replyMessenger  } from "../services/zaloService.js";
 import { replyToComment  } from "../services/facebookService.js";
@@ -299,8 +299,8 @@ export async function handleWithAIAgent(req, res, next) {
       if (config.bot_status !== "active") return;
 
       const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
-      const platform = "facebook";
-      const token = process.env.PAGE_ACCESS_TOKEN;
+      // const platform = "facebook";
+      // const token = process.env.PAGE_ACCESS_TOKEN;
 
 
 
@@ -316,14 +316,15 @@ export async function handleWithAIAgent(req, res, next) {
           // const sender_psid = webhook_event.sender.id;
 
           // if (webhook_event.message && webhook_event.message.text) {
-            const userMessage = webhook_event.message.text;
+            const userMessage = event?.message?.text;
+            if (!userMessage) continue;
 
             const mid = event.message?.mid || event.postback?.mid;
             if (mid && (await isDuplicated(mid))) {
               console.log("⏭️ dedup hit:", mid);
               continue;
             }
-            if (mid) await markProcessed(mid);
+            if (mid) await markProcessed(mid, 300);
 
 
             // ✅ chỉ xử lý text
