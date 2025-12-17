@@ -279,16 +279,16 @@ export async function handleWithAIAgent(req, res) {
 
     console.log("handleWithAIAgent", handleWithAIAgent)
 
-    body.entry.forEach(entry => {
-        const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
-        const sender_psid = webhook_event.sender.id;
+    // body.entry.forEach(entry => {
+    //     const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
+    //     const sender_psid = webhook_event.sender.id;
 
-        if (webhook_event.message) {
-          handleMessage(sender_psid, webhook_event.message);
-        } else if (webhook_event.postback) {
-          handlePostback(sender_psid, webhook_event.postback);
-        }
-    });
+    //     if (webhook_event.message) {
+    //       handleMessage(sender_psid, webhook_event.message);
+    //     } else if (webhook_event.postback) {
+    //       handlePostback(sender_psid, webhook_event.postback);
+    //     }
+    // });
 
     for (const entry of body.entry) {
       const webhook_event = entry.messaging[0];
@@ -497,43 +497,43 @@ export async function handleWAWebhook(req, res) {
 //   callSendAPI(sender_psid, response);
 // }
 
-// function handleMessage(sender_psid, received_message) {
-//   console.log("Message from", sender_psid, ":", received_message.text);
-//   // Ở đây bạn có thể gọi API gửi tin nhắn phản hồi
-//   let response;
+function handleMessage(sender_psid, received_message) {
+  console.log("Message from", sender_psid, ":", received_message.text);
+  // Ở đây bạn có thể gọi API gửi tin nhắn phản hồi
+  let response;
 
-//   if (received_message.text) {
-//     // Xử lý text bình thường
-//     response = {
-//       "text": `Bạn vừa nói: "${received_message.text}". LUXX cảm ơn bạn đã nhắn tin! 🌸`
-//     };
-//   } else {
-//     // Trường hợp không phải tin nhắn text (ảnh, audio,...)
-//     response = {
-//       "text": "LUXX hiện tại chỉ tiếp nhận tin nhắn dạng văn bản. Hẹn gặp bạn sau nhé! 💅"
-//     };
-//   }
+  if (received_message.text) {
+    // Xử lý text bình thường
+    response = {
+      "text": `Bạn vừa nói: "${received_message.text}". LUXX cảm ơn bạn đã nhắn tin! 🌸`
+    };
+  } else {
+    // Trường hợp không phải tin nhắn text (ảnh, audio,...)
+    response = {
+      "text": "LUXX hiện tại chỉ tiếp nhận tin nhắn dạng văn bản. Hẹn gặp bạn sau nhé! 💅"
+    };
+  }
 
-//   // Gửi phản hồi
-//   callSendAPI(sender_psid, response);
-// }
+  // Gửi phản hồi
+  callSendAPI(sender_psid, response);
+}
 
-// async function callSendAPI(sender_psid, response) {
-//   const request_body = {
-//     recipient: {
-//       id: sender_psid
-//     },
-//     messaging_type: "RESPONSE",
-//     message: response
-//   };
+async function callSendAPI(sender_psid, response) {
+  const request_body = {
+    recipient: {
+      id: sender_psid
+    },
+    messaging_type: "RESPONSE",
+    message: response
+  };
 
-//   try {
-//     const res = await axios.post(
-//       `https://graph.facebook.com/v22.0/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
-//       request_body
-//     );
-//     console.log("✅ Tin nhắn đã gửi thành công!", res.data);
-//   } catch (err) {
-//     console.error(`❌ Gửi tin nhắn cho ${sender_psid} thất bại:`, err.response ? err.response.data : err.message);
-//   }
-// }
+  try {
+    const res = await axios.post(
+      `https://graph.facebook.com/v22.0/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+      request_body
+    );
+    console.log("✅ Tin nhắn đã gửi thành công!", res.data);
+  } catch (err) {
+    console.error(`❌ Gửi tin nhắn cho ${sender_psid} thất bại:`, err.response ? err.response.data : err.message);
+  }
+}
