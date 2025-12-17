@@ -128,6 +128,7 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
     if (toolCalls.length === 0) break;
 
     const toolResults = [];
+    console.log("toolCalls RAW:", JSON.stringify(toolCalls[0], null, 2));
 
     for (const call of toolCalls) {
       const name = call.name || call.tool_name; // fallback
@@ -141,9 +142,15 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
       toolTrace.push({ name, args, result });
 
+      const callId = call.call_id || call.id;
+      if (!callId) {
+        console.log("TOOL CALL OBJECT:", JSON.stringify(call, null, 2));
+        throw new Error("Missing call_id from tool call");
+      }
+
       toolResults.push({
         type: "function_call_output",
-        tool_call_id: call.id,
+        tool_call_id: callId,
         output: JSON.stringify(result)
       });
     }
