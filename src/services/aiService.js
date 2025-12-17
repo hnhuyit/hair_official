@@ -115,21 +115,23 @@ export async function askAI(message, prompt, history, platform = "zalo") {
 export async function callAgentWithTools({ model, input, tools, toolHandlers }) {
   const toolTrace = [];
 
-  // console.log("TOOLS SENT:", JSON.stringify(tools, null, 2));
+  let resp = await openai.responses.create({ model, input, tools });
 
-  let resp = await openai.responses.create({
-    model,
-    input,
-    tools
-  });
+  while (true) {
+    const output = Array.isArray(resp.output) ? resp.output : [];
 
-  while (resp.output?.some(o => o.type === "tool_call")) {
-    const toolCalls = resp.output.filter(o => o.type === "tool_call");
+    // ✅ tương thích nhiều kiểu output
+    const toolCalls = output.filter(
+      o => o.type === "tool_call" || o.type === "function_call"
+    );
+
+    if (toolCalls.length === 0) break;
 
     const toolResults = [];
+
     for (const call of toolCalls) {
-      const name = call.name;
-      const rawArgs = call.arguments ?? "{}";
+      const name = call.name || call.tool_name; // fallback
+      const rawArgs = call.arguments ?? call.input ?? "{}";
       const args = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
 
       const handler = toolHandlers[name];
@@ -146,16 +148,43 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
       });
     }
 
+    // ✅ chuẩn Responses API: nối tiếp bằng previous_response_id
     resp = await openai.responses.create({
       model,
-      input: [...input, ...toolResults], // ✅ feed đúng item type tool_result
+      previous_response_id: resp.id,
+      input: toolResults,
       tools
     });
   }
 
-  return { finalText: resp.output_text || "Mình chưa hiểu ý bạn, bạn nói rõ hơn giúp mình nhé.", toolTrace };
+  const finalText = extractFinalText(resp);
+
+  return {
+    finalText: finalText || "Mình chưa hiểu ý bạn, bạn nói rõ hơn giúp mình nhé.",
+    toolTrace
+  };
 }
 
 function safeJsonParse(s) {
   try { return JSON.parse(s); } catch { return {}; }
+}
+
+function extractFinalText(resp) {
+  // 1) shortcut nếu có
+  if (resp?.output_text && String(resp.output_text).trim()) return resp.output_text.trim();
+
+  // 2) đọc từ output message.content
+  const output = Array.isArray(resp?.output) ? resp.output : [];
+  const texts = [];
+
+  for (const item of output) {
+    if (item.type === "message" && Array.isArray(item.content)) {
+      for (const c of item.content) {
+        if (c.type === "output_text" && c.text) texts.push(c.text);
+        if (c.type === "text" && c.text) texts.push(c.text); // fallback
+      }
+    }
+  }
+
+  return texts.join("").trim();
 }
