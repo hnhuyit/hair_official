@@ -279,7 +279,7 @@ export async function handleWithAIAgent(req, res) {
 
     // ✅ ACK sớm để Meta không retry
     res.status(200).send('EVENT_RECEIVED');
-    console.log("handleWithAIAgent")
+    // console.log("handleWithAIAgent")
 
     // body.entry.forEach(entry => {
     //     const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
