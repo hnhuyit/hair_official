@@ -1,7 +1,7 @@
 // src/services/aiResponder.js
 import { callAgentWithTools } from "./aiService.js";
-import { createBooking } from "./bookingService.js";
-import { lookupCustomer, createLead } from "./airtableService.js"; // hoặc crmService riêng
+import { createBooking, createBookingAirtable } from "./bookingService.js";
+// import { lookupCustomer, createLead } from "./airtableService.js"; // hoặc crmService riêng
 
 import { askAI } from "./aiService.js";
 import { replyZalo, replyMessenger } from "./zaloService.js";
@@ -72,36 +72,73 @@ export async function handleAIReply(userId, userMessage, prompt, history, token,
 }
 
 const tools = [
+  // {
+  //   type: "function",
+  //   function: {
+  //     name: "lookup_customer",
+  //     description: "Tra cứu khách trong CRM theo userId (PSID) hoặc phone",
+  //     parameters: {
+  //       type: "object",
+  //       properties: {
+  //         userId: { type: "string" },
+  //         phone: { type: "string" }
+  //       },
+  //       required: ["userId"]
+  //     }
+  //   }
+  // },
+  // {
+  //   type: "function",
+  //   function: {
+  //     name: "create_booking",
+  //     description: "Tạo booking khi khách muốn đặt lịch",
+  //     parameters: {
+  //       type: "object",
+  //       properties: {
+  //         userId: { type: "string" },
+  //         service: { type: "string", description: "Ví dụ: nail, pedicure, headspa..." },
+  //         datetime_iso: { type: "string", description: "ISO8601. Nếu chưa rõ thì để trống và hỏi lại." },
+  //         phone: { type: "string" },
+  //         note: { type: "string" }
+  //       },
+  //       required: ["userId", "service"]
+  //     }
+  //   }
+  // },
   {
     type: "function",
     function: {
-      name: "lookup_customer",
-      description: "Tra cứu khách trong CRM theo userId (PSID) hoặc phone",
+      name: "create_booking_airtable",
+      description: "Ghi booking khi đã có đủ tên, dịch vụ, giờ và số điện thoại",
       parameters: {
         type: "object",
         properties: {
-          userId: { type: "string" },
-          phone: { type: "string" }
+          service: {
+            type: "string",
+            description: "Tên dịch vụ (vd: nail, pedicure, head spa)"
+          },
+          datetime_iso: {
+            type: "string",
+            description: "Thời gian đặt lịch dạng ISO8601 (+07)"
+          },
+          phone: {
+            type: "string",
+            description: "Số điện thoại khách hàng"
+          },
+          name: {
+            type: "string",
+            description: "Tên khách hàng"
+          },
+          email: {
+            type: "string",
+            description: "Email khách hàng (optional)"
+          },
+          note: {
+            type: "string",
+            description: "Ghi chú thêm (optional)"
+          }
         },
-        required: ["userId"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "create_booking",
-      description: "Tạo booking khi khách muốn đặt lịch",
-      parameters: {
-        type: "object",
-        properties: {
-          userId: { type: "string" },
-          service: { type: "string", description: "Ví dụ: nail, pedicure, headspa..." },
-          datetime_iso: { type: "string", description: "ISO8601. Nếu chưa rõ thì để trống và hỏi lại." },
-          phone: { type: "string" },
-          note: { type: "string" }
-        },
-        required: ["userId", "service"]
+        required: ["service", "datetime_iso", "phone", "name"]
       }
     }
   }
@@ -109,11 +146,27 @@ const tools = [
 
 export async function runAgent({ platform, userId, userMessage, systemPrompt, history }) {
   // Bạn nhét state ngữ cảnh vào đây cũng được: last_intent, missing_fields...
-  const input = buildInput({ platform, userId, userMessage, systemPrompt, history });
+  // const input = buildInput({ platform, userId, userMessage, systemPrompt, history });
+
+  const input = [
+    { role: "system", content: systemPrompt },
+    ...(history ?? []).slice(-10).map(h => ({ role: h.role, content: h.content })),
+    {
+      role: "user",
+      content:
+        "Nhiệm vụ:\n" +
+        "- Nếu thiếu dịch vụ → hỏi dịch vụ\n" +
+        "- Nếu thiếu giờ → hỏi giờ\n" +
+        "- Nếu thiếu số điện thoại → xin số điện thoại\n" +
+        "- Nếu thiếu tên → xin tên\n" +
+        "- CHỈ gọi create_booking khi có đủ 4 thông tin\n\n" +
+        `Tin nhắn người dùng: ${userMessage}`
+    }
+  ];
 
   const toolHandlers = {
-    lookup_customer: async (args) => lookupCustomer(args),
-    create_booking: async (args) => createBooking({ platform, ...args })
+    // lookup_customer: async (args) => lookupCustomer(args),
+    create_booking_airtable: async (args) => createBookingAirtable({ platform, ...args })
   };
 
   const { finalText, toolTrace } = await callAgentWithTools({
@@ -131,7 +184,7 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
 function buildInput({ platform, userId, userMessage, systemPrompt, history }) {
   const messages = [
     { role: "system", content: systemPrompt },
-    ...(history ?? []).slice(-12).map(h => ({ role: h.role, content: h.message })),
+    ...(history ?? []).slice(-12).map(h => ({ role: h.role, content: h.content })),
     {
       role: "user",
       content: JSON.stringify({

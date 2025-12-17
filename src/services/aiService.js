@@ -64,18 +64,63 @@ export async function askAI(message, prompt, history, platform = "zalo") {
   return res.choices[0].message.content.trim();
 }
 
+//v1
+// export async function callAgentWithTools({ model, input, tools, toolHandlers }) {
+//   const toolTrace = [];
 
+//   let resp = await openai.responses.create({
+//     model,
+//     instructions: 'You are a helpful assistant.',
+//     input,
+//     tools
+//   });
+
+//   // loop tool calls
+//   while (resp.output?.some(o => o.type === "tool_call")) {
+//     const toolCalls = resp.output.filter(o => o.type === "tool_call");
+
+//     const toolResults = [];
+//     for (const call of toolCalls) {
+//       const name = call.name;
+//       const args = call.arguments ? JSON.parse(call.arguments) : {};
+//       const handler = toolHandlers[name];
+
+//       const result = handler
+//         ? await handler(args)
+//         : { ok: false, error: `No handler for tool: ${name}` };
+
+//       toolTrace.push({ name, args, result });
+
+//       toolResults.push({
+//         type: "tool_result",
+//         tool_call_id: call.id,
+//         output: JSON.stringify(result)
+//       });
+//     }
+
+//     resp = await openai.responses.create({
+//       model,
+//       input: [
+//         ...input,
+//         ...toolResults.map(t => ({ role: "tool", content: t.output, tool_call_id: t.tool_call_id }))
+//       ],
+//       tools
+//     });
+//   }
+
+//   return { finalText: resp.output_text || "Mình chưa hiểu ý bạn, bạn nói rõ hơn giúp mình nhé.", toolTrace };
+// }
+
+//fixed
 export async function callAgentWithTools({ model, input, tools, toolHandlers }) {
   const toolTrace = [];
 
   let resp = await openai.responses.create({
     model,
-    instructions: 'You are a helpful assistant.',
     input,
     tools
   });
 
-  // loop tool calls
   while (resp.output?.some(o => o.type === "tool_call")) {
     const toolCalls = resp.output.filter(o => o.type === "tool_call");
 
@@ -100,10 +145,7 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
     resp = await openai.responses.create({
       model,
-      input: [
-        ...input,
-        ...toolResults.map(t => ({ role: "tool", content: t.output, tool_call_id: t.tool_call_id }))
-      ],
+      input: [...input, ...toolResults], // ✅ feed đúng item type tool_result
       tools
     });
   }
