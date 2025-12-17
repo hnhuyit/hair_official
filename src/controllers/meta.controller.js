@@ -3,6 +3,7 @@ import { handleIGMessage, handleIGPostback } from "../services/instagramService.
 import { handleAIReply, runAgent } from "../services/aiResponder.js";
 // import { callAgentWithTools } from "../services/aiService.js";
 // import { createBooking } from "../services/bookingService.js";
+// import { isDuplicated, markProcessed } from "../utils/dedupStore.js";
 
 import { replyMessenger  } from "../services/zaloService.js";
 import { replyToComment  } from "../services/facebookService.js";
@@ -296,9 +297,9 @@ export async function handleWithAIAgent(req, res) {
       if (webhook_event.message && webhook_event.message.text) {
         const userMessage = webhook_event.message.text;
 
-        const mid = webhook_event.message?.mid || webhook_event.postback?.mid;
-        if (mid && (await isDuplicated(mid))) continue;
-        if (mid) await markProcessed(mid);
+        // const mid = webhook_event.message?.mid || webhook_event.postback?.mid;
+        // if (mid && (await isDuplicated(mid))) continue;
+        // if (mid) await markProcessed(mid);
 
         // 1. Lấy cấu hình hệ thống (ví dụ như SYSTEM_PROMPT)
         const config = await fetchConfigFromAirtable();
