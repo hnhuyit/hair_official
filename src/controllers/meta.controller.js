@@ -2,8 +2,8 @@
 import { handleIGMessage, handleIGPostback } from "../services/instagramService.js";
 import { handleAIReply, runAgent } from "../services/aiResponder.js";
 
-// import { callAgentWithTools } from "./aiService.js";
-// import { createBooking } from "./bookingService.js";
+import { callAgentWithTools } from "../services/aiService.js";
+import { createBooking } from "../services/bookingService.js";
 
 import { replyMessenger  } from "../services/zaloService.js";
 import { replyToComment  } from "../services/facebookService.js";

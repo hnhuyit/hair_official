@@ -1,4 +1,4 @@
-export async function bookAppointment({ platform, userId, service, datetime_iso, phone, note }) {
+export async function createBooking({ platform, userId, service, datetime_iso, phone, note }) {
   // 1) Validate tối thiểu
   if (!service) return { ok: false, need: ["service"], message: "Bạn muốn làm dịch vụ gì ạ?" };
 
