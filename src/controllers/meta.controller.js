@@ -277,7 +277,7 @@ export async function handleWithAIAgent(req, res, next) {
       return res.sendStatus(404);
     }
 
-    console.log("handleWithAIAgent", handleWithAIAgent)
+    console.log("handleWithAIAgent")
 
     // body.entry.forEach(entry => {
     //     const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);

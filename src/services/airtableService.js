@@ -120,7 +120,7 @@ export async function saveMessage({ userId, role, message, platform = "unknown"}
       Platform: platform,
       Timestamp: new Date().toISOString() // Dùng định dạng ISO để Airtable hiểu
     });
-    console.log("✅ Saved message record:", record);
+    // console.log("✅ Saved message record:", record);
     return record;
   } catch (error) {
     console.error("🔥 Error saving message:", error);
