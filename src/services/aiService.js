@@ -114,8 +114,8 @@ export async function askAI(message, prompt, history, platform = "zalo") {
 //fixed
 export async function callAgentWithTools({ model, input, tools, toolHandlers }) {
   const toolTrace = [];
-  
-  console.log("TOOLS SENT:", JSON.stringify(tools, null, 2));
+
+  // console.log("TOOLS SENT:", JSON.stringify(tools, null, 2));
 
   let resp = await openai.responses.create({
     model,

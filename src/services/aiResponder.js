@@ -111,6 +111,7 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
     }
   ];
 
+  console.log("input", input)
   const toolHandlers = {
     // lookup_customer: async (args) => lookupCustomer(args),
     create_booking_airtable: async (args) => createBookingAirtable({ platform, ...args })
@@ -123,7 +124,7 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
     toolHandlers
   });
 
-  console.log("finalText by runAgent", finalText)
+  console.log("finalText by runAgent", finalText, toolTrace)
 
   return { replyText: finalText, toolTrace };
 }
