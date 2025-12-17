@@ -106,19 +106,22 @@ const tools = [
   //   }
   // },
   {
-    name: "create_booking_airtable",
-    description: "Tạo booking khi đã có đủ tên, dịch vụ, giờ và số điện thoại",
-    parameters: {
-      type: "object",
-      properties: {
-        service: { type: "string" },
-        datetime_iso: { type: "string", description: "ISO8601 (+07)" },
-        phone: { type: "string" },
-        name: { type: "string" },
-        email: { type: "string" },
-        note: { type: "string" }
-      },
-      required: ["service", "datetime_iso", "phone", "name"]
+    type: "function",
+    function: {
+      name: "create_booking_airtable",
+      description: "Tạo booking khi đã có đủ tên, dịch vụ, giờ và số điện thoại",
+      parameters: {
+        type: "object",
+        properties: {
+          service: { type: "string" },
+          datetime_iso: { type: "string", description: "ISO8601 (+07)" },
+          phone: { type: "string" },
+          name: { type: "string" },
+          email: { type: "string" },
+          note: { type: "string" }
+        },
+        required: ["service", "datetime_iso", "phone", "name"]
+      }
     }
   }
 ];

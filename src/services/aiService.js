@@ -126,8 +126,13 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
     const toolResults = [];
     for (const call of toolCalls) {
-      const name = call.name;
-      const args = call.arguments ? JSON.parse(call.arguments) : {};
+      // ✅ tương thích cả 2 dạng
+      const name = call.name || call.function?.name;
+      const rawArgs = call.arguments ?? call.function?.arguments ?? {};
+
+      // ✅ args có thể là string JSON hoặc object
+      const args = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
+
       const handler = toolHandlers[name];
 
       const result = handler
@@ -151,4 +156,8 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
   }
 
   return { finalText: resp.output_text || "Mình chưa hiểu ý bạn, bạn nói rõ hơn giúp mình nhé.", toolTrace };
+}
+
+function safeJsonParse(s) {
+  try { return JSON.parse(s); } catch { return {}; }
 }
