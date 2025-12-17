@@ -1,4 +1,7 @@
 // src/services/aiResponder.js
+import { callAgentWithTools } from "./aiService.js";
+import { bookAppointment } from "./bookingService.js";
+import { lookupCustomer, createLead } from "./airtableService.js"; // hoặc crmService riêng
 
 import { askAI } from "./aiService.js";
 import { replyZalo, replyMessenger } from "./zaloService.js";
@@ -66,4 +69,77 @@ export async function handleAIReply(userId, userMessage, prompt, history, token,
       console.error("❌ Lỗi gửi cảnh báo admin:", adminErr.message);
     }
   }
+}
+
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "lookup_customer",
+      description: "Tra cứu khách trong CRM theo userId (PSID) hoặc phone",
+      parameters: {
+        type: "object",
+        properties: {
+          userId: { type: "string" },
+          phone: { type: "string" }
+        },
+        required: ["userId"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_booking",
+      description: "Tạo booking khi khách muốn đặt lịch",
+      parameters: {
+        type: "object",
+        properties: {
+          userId: { type: "string" },
+          service: { type: "string", description: "Ví dụ: nail, pedicure, headspa..." },
+          datetime_iso: { type: "string", description: "ISO8601. Nếu chưa rõ thì để trống và hỏi lại." },
+          phone: { type: "string" },
+          note: { type: "string" }
+        },
+        required: ["userId", "service"]
+      }
+    }
+  }
+];
+
+export async function runAgent({ platform, userId, userMessage, systemPrompt, history }) {
+  // Bạn nhét state ngữ cảnh vào đây cũng được: last_intent, missing_fields...
+  const input = buildInput({ platform, userId, userMessage, systemPrompt, history });
+
+  const toolHandlers = {
+    lookup_customer: async (args) => lookupCustomer(args),
+    create_booking: async (args) => bookAppointment({ platform, ...args })
+  };
+
+  const { finalText, toolTrace } = await callAgentWithTools({
+    model: "gpt-5-mini",
+    input,
+    tools,
+    toolHandlers
+  });
+
+  return { replyText: finalText, toolTrace };
+}
+
+function buildInput({ platform, userId, userMessage, systemPrompt, history }) {
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...(history ?? []).slice(-12).map(h => ({ role: h.role, content: h.message })),
+    {
+      role: "user",
+      content: JSON.stringify({
+        platform,
+        userId,
+        message: userMessage,
+        instruction:
+          "Nếu khách có ý định đặt lịch (book/đặt hẹn/đặt lịch), hãy thu thập thiếu thông tin (dịch vụ, ngày giờ, số điện thoại) và gọi create_booking khi đủ. Nếu thiếu datetime hoặc phone thì hỏi ngắn gọn."
+      })
+    }
+  ];
+  return messages;
 }

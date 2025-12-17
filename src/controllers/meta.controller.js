@@ -1,6 +1,10 @@
 // src/controllers/zalo.controller.js
 import { handleIGMessage, handleIGPostback } from "../services/instagramService.js";
-import { handleAIReply } from "../services/aiResponder.js";
+import { handleAIReply, runAgent } from "../services/aiResponder.js";
+
+import { callAgentWithTools } from "./aiService.js";
+import { createBooking } from "./bookingService.js";
+
 import { replyMessenger  } from "../services/zaloService.js";
 import { replyToComment  } from "../services/facebookService.js";
 import { fetchConfigFromAirtable, updateLastInteractionOnlyIfNewDay } from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
@@ -275,46 +279,62 @@ export async function handleWithAIAgent(req, res) {
 
     console.log("handleWithAIAgent", handleWithAIAgent)
 
-    // body.entry.forEach(entry => {
-    //     const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
-    //     const sender_psid = webhook_event.sender.id;
+    body.entry.forEach(entry => {
+        const webhook_event = entry.messaging[0]; // console.log("New Event:", webhook_event, process.env.PAGE_ACCESS_TOKEN);
+        const sender_psid = webhook_event.sender.id;
 
-    //     if (webhook_event.message) {
-    //       handleMessage(sender_psid, webhook_event.message);
-    //     } else if (webhook_event.postback) {
-    //       handlePostback(sender_psid, webhook_event.postback);
-    //     }
-    // });
+        if (webhook_event.message) {
+          handleMessage(sender_psid, webhook_event.message);
+        } else if (webhook_event.postback) {
+          handlePostback(sender_psid, webhook_event.postback);
+        }
+    });
 
-    // for (const entry of body.entry) {
-    //   const webhook_event = entry.messaging[0];
-    //   const sender_psid = webhook_event.sender.id;
+    for (const entry of body.entry) {
+      const webhook_event = entry.messaging[0];
+      const sender_psid = webhook_event.sender.id;
 
-    //   if (webhook_event.message && webhook_event.message.text) {
-    //     const userMessage = webhook_event.message.text;
+      if (webhook_event.message && webhook_event.message.text) {
+        const userMessage = webhook_event.message.text;
 
-    //     // 1. Lấy cấu hình hệ thống (ví dụ như SYSTEM_PROMPT)
-    //     const config = await fetchConfigFromAirtable();
-    //     const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
+        const mid = webhook_event.message?.mid || webhook_event.postback?.mid;
+        if (mid && (await isDuplicated(mid))) continue;
+        if (mid) await markProcessed(mid);
 
-    //     // 2. Lưu lịch sử người dùng
-    //     await saveMessage({ userId: sender_psid, role: "user", message: userMessage, platform: "facebook"});
+        // 1. Lấy cấu hình hệ thống (ví dụ như SYSTEM_PROMPT)
+        const config = await fetchConfigFromAirtable();
+        const SYSTEM_PROMPT = config.SYSTEM_PROMPT;
 
-    //     // 3. Lấy lịch sử gần đây
-    //     const history = await getRecentMessages(sender_psid, "facebook");
+        // 2. Lưu lịch sử người dùng
+        await saveMessage({ userId: sender_psid, role: "user", message: userMessage, platform: "facebook"});
 
-    //     // 4. Gửi lên OpenAI
-    //     const aiReply = await handleAIReply(sender_psid, userMessage, SYSTEM_PROMPT, history, process.env.PAGE_ACCESS_TOKEN);
+        // 3. Lấy lịch sử gần đây
+        const history = await getRecentMessages(sender_psid, "facebook");
 
-    //     // 5. Lưu phản hồi
-    //     await saveMessage({ userId: sender_psid, role: "assistant", message: aiReply, platform: "facebook" });
+        // 4. Gửi lên OpenAI
+        // const aiReply = await handleAIReply(sender_psid, userMessage, SYSTEM_PROMPT, history, process.env.PAGE_ACCESS_TOKEN);
 
-    //     // 6. Gửi lại cho người dùng qua Messenger
-    //     await replyMessenger(sender_psid, aiReply, process.env.PAGE_ACCESS_TOKEN);
-    //   } else {
-    //     await replyMessenger(sender_psid, `❗ Hiện tại, AI chỉ hỗ trợ tin nhắn dạng văn bản.`, process.env.PAGE_ACCESS_TOKEN);
-    //   }
-    // }
+        // 핵심: agent + function calling
+        const { replyText, toolTrace } = await runAgent({
+          platform: "facebook",
+          userId: psid,
+          userMessage: text,
+          systemPrompt: SYSTEM_PROMPT,
+          history
+        });
+
+        // 5. Lưu phản hồi
+        await saveMessage({ userId: sender_psid, role: "assistant", message: aiReply, platform: "facebook" });
+
+        // 6. Gửi lại cho người dùng qua Messenger
+        await replyMessenger(sender_psid, aiReply, process.env.PAGE_ACCESS_TOKEN);
+
+        // (optional) log toolTrace để debug booking tool calls
+        if (toolTrace?.length) console.log("toolTrace:", toolTrace);
+      } else {
+        await replyMessenger(sender_psid, `❗ Hiện tại, AI chỉ hỗ trợ tin nhắn dạng văn bản.`, process.env.PAGE_ACCESS_TOKEN);
+      }
+    }
 
     res.status(200).send('EVENT_RECEIVED');
   } catch (err) {
