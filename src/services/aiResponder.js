@@ -86,7 +86,7 @@ const tools = [
         email: { type: "string" },
         note: { type: "string" }
       },
-      required: ["service", "datetime_iso", "phone", "name"]
+      required: ["service", "phone"]
     }
   }
 ];
@@ -95,23 +95,28 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
   // Bạn nhét state ngữ cảnh vào đây cũng được: last_intent, missing_fields...
   // const input = buildInput({ platform, userId, userMessage, systemPrompt, history });
 
+  // const normalizedHistory = (history ?? [])
+  //   .slice(-10)
+  //   .map(h => ({
+  //     role: h.role,
+  //     content: (h.content ?? h.message ?? "").trim()
+  //   }))
+  //   .filter(m => m.content);
+
   const input = [
-    { role: "system", content: systemPrompt },
+    { role: "system", content: "QUY TẮC ĐẶT LỊCH:\n" +
+      "- Nếu khách muốn đặt lịch/hẹn tư vấn: thu thập service, thời gian, phone (tên/email/note optional).\n" +
+      "- Khi có đủ service + phone + (datetime_iso hoặc datetime_text) => BẮT BUỘC gọi tool create_booking_airtable.\n" +
+      "- Nếu thiếu gì thì hỏi ngắn gọn 1-2 ý.\n" +
+      "- Không trả lời chung chung kiểu 'chưa hiểu' nếu khách đang đặt lịch.\n"},
     ...(history ?? []).slice(-10).map(h => ({ role: h.role, content: h.content })),
     {
       role: "user",
-      content:
-        "Nhiệm vụ:\n" +
-        "- Nếu thiếu dịch vụ → hỏi dịch vụ\n" +
-        "- Nếu thiếu giờ → hỏi giờ\n" +
-        "- Nếu thiếu số điện thoại → xin số điện thoại\n" +
-        "- Nếu thiếu tên → xin tên\n" +
-        "- CHỈ gọi create_booking khi có đủ 4 thông tin\n\n" +
-        `Tin nhắn người dùng: ${userMessage}`
+      content: userMessage
     }
   ];
 
-  console.log("input", input)
+  // console.log("input", input)
   const toolHandlers = {
     // lookup_customer: async (args) => lookupCustomer(args),
     create_booking_airtable: async (args) => createBookingAirtable({ platform, ...args })
