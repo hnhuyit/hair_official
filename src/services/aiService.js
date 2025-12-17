@@ -166,6 +166,19 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
   const finalText = extractFinalText(resp);
 
+  // 🔥 ƯU TIÊN phản hồi từ tool nếu booking thành công
+  const successTool = toolTrace.find(
+    t => t.name === "create_booking_airtable" && t.result?.ok
+  );
+
+  if (successTool) {
+    return {
+      finalText: successTool.result.summary,
+      toolTrace
+    };
+  }
+
+
   return {
     finalText: finalText || "Mình chưa hiểu ý bạn, bạn nói rõ hơn giúp mình nhé.",
     toolTrace
