@@ -269,7 +269,7 @@ export async function handleFacebookWebhook(req, res, next) {
   }
 }
 
-export async function handleWithAIAgent(req, res, next) {
+export async function handleWithAIAgent(req, res) {
   try {
     const body = req.body;
     
@@ -362,7 +362,7 @@ export async function handleWithAIAgent(req, res, next) {
     )().catch(err => console.error("🔥 async handler error:", err));
   } catch (err) {
     console.error("🔥 Lỗi webhook Messenger:", err);
-    next(err);
+    // next(err);
   }
 }
 
