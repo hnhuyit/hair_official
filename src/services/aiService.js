@@ -150,7 +150,8 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
       toolResults.push({
         type: "function_call_output",
-        tool_call_id: callId,
+        // tool_call_id: callId,
+        call_id: callId,        // ✅ đúng key
         output: JSON.stringify(result)
       });
     }
