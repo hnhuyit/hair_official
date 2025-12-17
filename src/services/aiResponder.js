@@ -113,7 +113,7 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
 
   const toolHandlers = {
     lookup_customer: async (args) => lookupCustomer(args),
-    create_booking: async (args) => bookAppointment({ platform, ...args })
+    create_booking: async (args) => createBooking({ platform, ...args })
   };
 
   const { finalText, toolTrace } = await callAgentWithTools({
@@ -122,6 +122,8 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
     tools,
     toolHandlers
   });
+
+  console.log("finalText by runAgent", finalText)
 
   return { replyText: finalText, toolTrace };
 }

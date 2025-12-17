@@ -324,10 +324,10 @@ export async function handleWithAIAgent(req, res, next) {
         });
 
         // 5. Lưu phản hồi
-        await saveMessage({ userId: sender_psid, role: "assistant", message: aiReply, platform: "facebook" });
+        await saveMessage({ userId: sender_psid, role: "assistant", message: replyText, platform: "facebook" });
 
         // 6. Gửi lại cho người dùng qua Messenger
-        await replyMessenger(sender_psid, aiReply, process.env.PAGE_ACCESS_TOKEN);
+        await replyMessenger(sender_psid, replyText, process.env.PAGE_ACCESS_TOKEN);
 
         // (optional) log toolTrace để debug booking tool calls
         if (toolTrace?.length) console.log("toolTrace:", toolTrace);
