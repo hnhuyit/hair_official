@@ -269,7 +269,7 @@ export async function handleFacebookWebhook(req, res, next) {
   }
 }
 
-export async function handleWithAIAgent(req, res) {
+export async function handleWithAIAgent(req, res, next) {
   try {
     const body = req.body;
     

@@ -159,7 +159,7 @@ export async function getRecentMessages(userId, platform = null, limit = 100) {
       }))
       .reverse();
 
-    console.log("✅ Retrieved messages:", messages);
+    // console.log("✅ Retrieved messages:", messages);
     return messages;
   } catch (error) {
     console.error("🔥 Error retrieving messages:", error);
