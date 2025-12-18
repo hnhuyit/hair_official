@@ -121,20 +121,20 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
   //   }))
   //   .filter(m => m.content);
 
-  const input = [
-    { role: "system", content: "QUY TẮC ĐẶT LỊCH:\n" +
-      "- Nếu khách muốn đặt lịch/hẹn tư vấn: thu thập service, thời gian, phone (tên/email/note optional).\n" +
-      "- Khi có đủ service + phone + (datetime_iso hoặc datetime_text) => BẮT BUỘC gọi tool create_booking_pos.\n" +
-      "- Nếu thiếu gì thì hỏi ngắn gọn 1-2 ý.\n" +
-      "- Không trả lời chung chung kiểu 'chưa hiểu' nếu khách đang đặt lịch.\n"},
-    ...(history ?? []).slice(-10).map(h => ({ role: h.role, content: h.content })),
-    {
-      role: "user",
-      content: userMessage
-    }
-  ];
+  // const input = [
+  //   { role: "system", content: "QUY TẮC ĐẶT LỊCH:\n" +
+  //     "- Nếu khách muốn đặt lịch/hẹn tư vấn: thu thập service, thời gian, phone (tên/email/note optional).\n" +
+  //     "- Khi có đủ service + phone + (datetime_iso hoặc datetime_text) => BẮT BUỘC gọi tool create_booking_pos.\n" +
+  //     "- Nếu thiếu gì thì hỏi ngắn gọn 1-2 ý.\n" +
+  //     "- Không trả lời chung chung kiểu 'chưa hiểu' nếu khách đang đặt lịch.\n"},
+  //   ...(history ?? []).slice(-10).map(h => ({ role: h.role, content: h.content })),
+  //   {
+  //     role: "user",
+  //     content: userMessage
+  //   }
+  // ];
   
-  const inputPOS = [
+  const input = [
     { role: "system", content: "QUY TẮC ĐẶT LỊCH:\n" +
       "- Nếu khách muốn đặt lịch/hẹn tư vấn: thời gian, phone (tên/email/note optional).\n" +
       "- Khi có (datetime_iso hoặc datetime_text) => BẮT BUỘC gọi tool create_booking_pos.\n" +
@@ -156,7 +156,7 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
 
   const { finalText, toolTrace } = await callAgentWithTools({
     model: "gpt-5-mini",
-    inputPOS, //input,
+    input,
     tools,
     toolHandlers
   });
