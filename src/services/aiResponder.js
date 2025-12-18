@@ -1,6 +1,6 @@
 // src/services/aiResponder.js
 import { callAgentWithTools } from "./aiService.js";
-import { createBooking, createBookingAirtable } from "./bookingService.js";
+import { createBooking, createBookingAirtable, createBookingPOS } from "./bookingService.js";
 // import { lookupCustomer, createLead } from "./airtableService.js"; // hoặc crmService riêng
 
 import { askAI } from "./aiService.js";
@@ -88,6 +88,24 @@ const tools = [
       },
       required: ["service", "phone"]
     }
+  },
+  {
+    type: "function",
+    name: "create_booking_pos",
+    description: "Tạo booking trên POS khi thời gian",
+    parameters: {
+      type: "object",
+      properties: {
+        // service: { type: "string" },
+        datetime_iso: { type: "string", description: "ISO8601 +07" },
+        datetime_text: { type: "string" },
+        // phone: { type: "string" },
+        // name: { type: "string" },
+        // email: { type: "string" },
+        note: { type: "string" }
+      },
+      required: ["datetime_iso"]
+    }
   }
 ];
 
@@ -106,7 +124,20 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
   const input = [
     { role: "system", content: "QUY TẮC ĐẶT LỊCH:\n" +
       "- Nếu khách muốn đặt lịch/hẹn tư vấn: thu thập service, thời gian, phone (tên/email/note optional).\n" +
-      "- Khi có đủ service + phone + (datetime_iso hoặc datetime_text) => BẮT BUỘC gọi tool create_booking_airtable.\n" +
+      "- Khi có đủ service + phone + (datetime_iso hoặc datetime_text) => BẮT BUỘC gọi tool create_booking_pos.\n" +
+      "- Nếu thiếu gì thì hỏi ngắn gọn 1-2 ý.\n" +
+      "- Không trả lời chung chung kiểu 'chưa hiểu' nếu khách đang đặt lịch.\n"},
+    ...(history ?? []).slice(-10).map(h => ({ role: h.role, content: h.content })),
+    {
+      role: "user",
+      content: userMessage
+    }
+  ];
+  
+  const inputPOS = [
+    { role: "system", content: "QUY TẮC ĐẶT LỊCH:\n" +
+      "- Nếu khách muốn đặt lịch/hẹn tư vấn: thời gian, phone (tên/email/note optional).\n" +
+      "- Khi có (datetime_iso hoặc datetime_text) => BẮT BUỘC gọi tool create_booking_pos.\n" +
       "- Nếu thiếu gì thì hỏi ngắn gọn 1-2 ý.\n" +
       "- Không trả lời chung chung kiểu 'chưa hiểu' nếu khách đang đặt lịch.\n"},
     ...(history ?? []).slice(-10).map(h => ({ role: h.role, content: h.content })),
@@ -119,7 +150,8 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
   // console.log("input", input)
   const toolHandlers = {
     // lookup_customer: async (args) => lookupCustomer(args),
-    create_booking_airtable: async (args) => createBookingAirtable({ platform, ...args })
+    create_booking_pos: async (args) => createBookingPOS(args),
+    // create_booking_airtable: async (args) => createBookingAirtable({ platform, ...args })
   };
 
   const { finalText, toolTrace } = await callAgentWithTools({

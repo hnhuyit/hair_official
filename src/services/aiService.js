@@ -167,10 +167,13 @@ export async function callAgentWithTools({ model, input, tools, toolHandlers }) 
 
   const finalText = extractFinalText(resp);
 
-  // 🔥 ƯU TIÊN phản hồi từ tool nếu booking thành công
-  const successTool = toolTrace.find(
-    t => t.name === "create_booking_airtable" && t.result?.ok
-  );
+  // // 🔥 ƯU TIÊN phản hồi từ tool nếu booking thành công
+  // const successTool = toolTrace.find(
+  //   t => t.name === "create_booking_airtable" && t.result?.ok
+  // );
+  
+  // ✅ Ưu tiên tool nào ok:true và có summary → trả thẳng cho user (booking POS)
+  const successTool = toolTrace.find(t => t?.result?.ok && t?.result?.summary);
 
   if (successTool) {
     return {
