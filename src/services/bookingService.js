@@ -197,7 +197,7 @@ export async function createBookingPOS({
         staffId: Number(process.env.POS_DEFAULT_STAFF_ID || 1643)
       }
     ],
-    note: note || `Booking từ AI. Name: ${name || ""} | Phone: ${phone} | Email: ${email || ""}`.trim(),
+    note: note || `Booking từ AI.`.trim(),
     referenceId: `ai_${Date.now()}_${Math.random().toString(16).slice(2)}`, // idempotency key của bạn
     sourceType: "ai_chat"
   };
@@ -225,10 +225,10 @@ export async function createBookingPOS({
       ok: true,
       booking_id: data?.data || data?.id || data?.bookingId || payload.referenceId,
       summary:
-        `✅ Đã ghi nhận lịch ${service} lúc ${toMMDDYYYY_HHMM(start)}.\n` +
-        `SĐT: ${phone}` +
-        (name ? `\nTên: ${name}` : "") +
-        (email ? `\nEmail: ${email}` : "")
+        `✅ Đã ghi nhận lịch ${service} lúc ${toMMDDYYYY_HHMM(start)}.\n`
+        // `SĐT: ${phone}` +
+        // (name ? `\nTên: ${name}` : "") +
+        // (email ? `\nEmail: ${email}` : "")
     };
   } catch (e) {
     return { ok: false, error: "POS_BOOKING_EXCEPTION", detail: String(e) };
