@@ -171,7 +171,7 @@ export const SERVICE_MAP = {
 };
 
 
-const key = service?.toLowerCase?.() || "default";
+const key = "default";
 const cfg = SERVICE_MAP[key] || SERVICE_MAP.default;
 
 const customerId = pickRandom(cfg.customers);
