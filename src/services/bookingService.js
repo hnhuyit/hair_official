@@ -146,7 +146,7 @@ function pickRandom(arr = []) {
 // TODO: thay bằng bảng mapping thật (Airtable/DB)
 export const SERVICE_MAP = {
   default: {
-    customers: [137552, 137553, 137554],
+    customers: [137554, 137552, 137553],
     services: [6137, 6138],
     staffs: [1643, 1650, 1656]
   },
@@ -233,7 +233,7 @@ export async function createBookingPOS({
 
   // 5) Build payload POS (default customerId/group/staffId)
   const payload = {
-    customerId, //: Number(process.env.POS_DEFAULT_CUSTOMER_ID || 137553),
+    customerId: Number(customerId || 137553),
     group: Number(process.env.POS_DEFAULT_GROUP_ID || 1656),
     items: [
       {
@@ -241,7 +241,7 @@ export async function createBookingPOS({
         endTime: toMMDDYYYY_HHMM(end),
         requestStaff: true,
         serviceIds: [serviceId],
-        staffId, //staffId: Number(process.env.POS_DEFAULT_STAFF_ID || 1643)
+        staffId: Number(staffId || 1643)
       }
     ],
     note: (note || "Booking từ AI.").trim(),
