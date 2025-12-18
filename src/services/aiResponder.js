@@ -156,7 +156,7 @@ export async function runAgent({ platform, userId, userMessage, systemPrompt, hi
 
   const { finalText, toolTrace } = await callAgentWithTools({
     model: "gpt-5-mini",
-    input,
+    inputPOS, //input,
     tools,
     toolHandlers
   });
