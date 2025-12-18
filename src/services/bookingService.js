@@ -232,7 +232,8 @@ export async function createBookingPOS({
       ok: true,
       booking_id: data?.data || data?.id || data?.bookingId || payload.referenceId,
       summary:
-        `✅ Đã ghi nhận lịch lúc ${toMMDDYYYY_HHMM(start)}.\n`
+        `✅ Đã ghi nhận lịch lúc ${toMMDDYYYY_HHMM(start)}.\n`+
+        `Mã lịch: ${data?.data}`
         // `SĐT: ${phone}` +
         // (name ? `\nTên: ${name}` : "") +
         // (email ? `\nEmail: ${email}` : "")
