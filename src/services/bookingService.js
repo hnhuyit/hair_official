@@ -154,7 +154,7 @@ export async function createBookingPOS({
       message:
         // missing.includes("service") ? "Bạn muốn đặt dịch vụ nào ạ?"
         missing.includes("datetime") ? "Bạn muốn đặt lịch ngày giờ nào ạ?"
-        : "Bạn cho mình xin số điện thoại để xác nhận lịch nhé."
+        : "Bạn cho mình xin thông tin note nhé."
     };
   }
 
