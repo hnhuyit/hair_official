@@ -217,7 +217,7 @@ export async function createBookingPOS({
     });
 
     const data = await r.json().catch(() => ({}));
-    if (!r.ok) {
+    if (!r.ok || data?.statusCode !== 200) {
       return { ok: false, error: "POS_BOOKING_FAILED", detail: data };
     }
 
