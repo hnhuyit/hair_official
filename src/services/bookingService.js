@@ -138,13 +138,45 @@ function toMMDDYYYY_HHMM(d) {
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60 * 1000);
 }
-
+function pickRandom(arr = []) {
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 // TODO: thay bằng bảng mapping thật (Airtable/DB)
-const SERVICE_MAP = {
-  "tư vấn marketing": 6137,
-  "nail": 6137
+export const SERVICE_MAP = {
+  default: {
+    customers: [137552, 137553, 137554],
+    services: [6137, 6138],
+    staffs: [1643, 1650, 1656]
+  },
+
+  nail: {
+    customers: [137553, 137554],
+    services: [6137, 6138],     // Nail services
+    staffs: [1643, 1644]        // Nail staff
+  },
+
+  spa: {
+    customers: [137560],
+    services: [6140],
+    staffs: [1646]
+  },
+
+  consulting: {
+    customers: [137553],
+    services: [6201],
+    staffs: [1701, 1702]
+  }
 };
+
+
+const key = service?.toLowerCase?.() || "default";
+const cfg = SERVICE_MAP[key] || SERVICE_MAP.default;
+
+const customerId = pickRandom(cfg.customers);
+const serviceId  = pickRandom(cfg.services);
+const staffId    = pickRandom(cfg.staffs);
 
 export async function createBookingPOS({
   // service,
@@ -201,15 +233,15 @@ export async function createBookingPOS({
 
   // 5) Build payload POS (default customerId/group/staffId)
   const payload = {
-    customerId: Number(process.env.POS_DEFAULT_CUSTOMER_ID || 137553),
+    customerId, //: Number(process.env.POS_DEFAULT_CUSTOMER_ID || 137553),
     group: Number(process.env.POS_DEFAULT_GROUP_ID || 1656),
     items: [
       {
         startTime: toMMDDYYYY_HHMM(start),
         endTime: toMMDDYYYY_HHMM(end),
         requestStaff: true,
-        serviceIds: [6137],
-        staffId: Number(process.env.POS_DEFAULT_STAFF_ID || 1643)
+        serviceIds: [serviceId],
+        staffId, //staffId: Number(process.env.POS_DEFAULT_STAFF_ID || 1643)
       }
     ],
     note: (note || "Booking từ AI.").trim(),
