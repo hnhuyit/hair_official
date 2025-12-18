@@ -110,15 +110,29 @@ export async function createBookingAirtable({ service, datetime_iso, phone, name
 
 
 
-function toMMDDYYYY_HHMM(date) {
-  // date: JS Date
-  const pad = (n) => String(n).padStart(2, "0");
-  const mm = pad(date.getMonth() + 1);
-  const dd = pad(date.getDate());
-  const yyyy = date.getFullYear();
-  const hh = pad(date.getHours());
-  const mi = pad(date.getMinutes());
-  return `${mm}/${dd}/${yyyy} ${hh}:${mi}`;
+// function toMMDDYYYY_HHMM(date) {
+//   // date: JS Date
+//   const pad = (n) => String(n).padStart(2, "0");
+//   const mm = pad(date.getMonth() + 1);
+//   const dd = pad(date.getDate());
+//   const yyyy = date.getFullYear();
+//   const hh = pad(date.getHours());
+//   const mi = pad(date.getMinutes());
+//   return `${mm}/${dd}/${yyyy} ${hh}:${mi}`;
+// }
+function toMMDDYYYY_HHMM(d) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(d).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+
+  // en-US parts: month/day/year hour:minute
+  return `${parts.month}/${parts.day}/${parts.year} ${parts.hour}:${parts.minute}`;
 }
 
 function addMinutes(date, minutes) {
