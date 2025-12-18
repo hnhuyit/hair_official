@@ -145,6 +145,7 @@ export async function createBookingPOS({
   const missing = [];
   // if (!service) missing.push("service");
   // if (!phone) missing.push("phone");
+  if (!note) missing.push("note");
   if (!datetime_iso && !datetime_text) missing.push("datetime");
 
   if (missing.length) {
@@ -197,7 +198,7 @@ export async function createBookingPOS({
         staffId: Number(process.env.POS_DEFAULT_STAFF_ID || 1643)
       }
     ],
-    note: note || `Booking từ AI.`.trim(),
+    note: (note || "Booking từ AI.").trim(),
     referenceId: `ai_${Date.now()}_${Math.random().toString(16).slice(2)}`, // idempotency key của bạn
     sourceType: "ai_chat"
   };
@@ -217,15 +218,21 @@ export async function createBookingPOS({
     });
 
     const data = await r.json().catch(() => ({}));
-    if (!r.ok || data?.statusCode !== 200) {
-      return { ok: false, error: "POS_BOOKING_FAILED", detail: data };
+    if (!r.ok || data?.statusCode !== 200) {return {
+        ok: false,
+        error: isAuth ? "POS_AUTH_FAILED" : "POS_BOOKING_FAILED",
+        detail: { status: r.status, data },
+        message: isAuth
+          ? "Mình chưa đặt được trên POS do lỗi xác thực. Bạn nhắn mình thử lại sau 1–2 phút nhé."
+          : "Khung giờ này có thể đang bận hoặc dữ liệu chưa hợp lệ. Bạn chọn giúp mình khung giờ khác được không?"
+      };
     }
 
     return {
       ok: true,
       booking_id: data?.data || data?.id || data?.bookingId || payload.referenceId,
       summary:
-        `✅ Đã ghi nhận lịch ${service} lúc ${toMMDDYYYY_HHMM(start)}.\n`
+        `✅ Đã ghi nhận lịch lúc ${toMMDDYYYY_HHMM(start)}.\n`
         // `SĐT: ${phone}` +
         // (name ? `\nTên: ${name}` : "") +
         // (email ? `\nEmail: ${email}` : "")
