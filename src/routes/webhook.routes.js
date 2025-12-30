@@ -1,7 +1,7 @@
 // src/routes/webhook.routes.js
 import express from "express";
 import crypto from "crypto";
-import { verifyWebhook, handleZaloWebhook } from "../controllers/zalo.controller.js";
+import { verifyWebhook, handleZaloWebhook, handleMessZaloOA } from "../controllers/zalo.controller.js";
 import { verifyWebhookIG, verifyWebhookFB, verifyWebhookWA, handleIGWebhook, handleFacebookWebhook, handleWAWebhook, handleWithAIAgent } from "../controllers/meta.controller.js";
 import { verifyWebhookAnnaFB } from "../controllers/clients.controller.js";
 import { imageToVideo } from '../controllers/stability.controller.js';
@@ -18,7 +18,11 @@ router.get("/wa-webhook", verifyWebhookWA);
 
 
 // POST xử lý webhook từ Zalo
-router.post("/webhook", handleZaloWebhook);
+// router.post("/webhook", handleZaloWebhook);
+
+// POST xử lý webhook từ Zalo
+router.post("/webhook", handleMessZaloOA);
+
 router.post("/ig-webhook", handleIGWebhook);
 // router.post("/fb-webhook", handleFacebookWebhook);
 router.post("/fb-webhook", handleWithAIAgent);

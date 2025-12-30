@@ -11,6 +11,71 @@ export async function verifyWebhook(req, res) {
   return res.status(200).send(challenge || "Webhook verified");
 }
 
+export async function handleMessZaloOA(req, res, next) {
+  // 1) OPTIONAL: verify signature
+  // Nếu bạn chưa chắc header signature/timestamp có đúng theo docs payload bạn đang nhận,
+  // có thể tạm bypass verify để chạy thông luồng trước.
+  // const signatureOk = verifyZaloSignature(req);
+  // if (!signatureOk) {
+  //   // Nếu bạn muốn “mềm” hơn: log và vẫn OK để không bị Zalo retry spam.
+  //   return res.status(401).send("Invalid signature");
+  // }
+
+  // 2) Trả 200 sớm cho Zalo (tránh retry)
+  res.status(200).send("OK");
+
+  // 3) Chuẩn hoá payload gửi sang Airtable
+  const payload = req.body;
+
+  // Bạn nên gửi sang Airtable một object gọn + raw để debug
+  const airtablePayload = {
+    source: "zalo_oa",
+    received_at: new Date().toISOString(),
+
+    // tuỳ payload thực tế của bạn mà map
+    app_id: payload?.app_id ?? null,
+    event_name: payload?.event_name ?? payload?.event ?? null,
+    sender_id: payload?.sender?.id ?? payload?.sender?.user_id ?? null,
+    text:
+      payload?.message?.text ??
+      payload?.message?.content?.text ??
+      payload?.text ??
+      null,
+
+    raw: payload, // giữ raw luôn cho chắc
+  };
+
+  // 4) Gọi webhook Airtable Automation (link trong ảnh)
+  const url = process.env.AIRTABLE_AUTOMATION_WEBHOOK_URL | "https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wfl3Cq8ckREYevPae/wtrtQUhGM3HS7Bsr8";
+  if (!url) {
+    console.error("Missing AIRTABLE_AUTOMATION_WEBHOOK_URL");
+    return;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(airtablePayload),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      console.error("Airtable webhook FAILED:", {
+        status: res.status,
+        data,
+      });
+    } else {
+      console.log("Airtable webhook OK:", data);
+    }
+  } catch (err) {
+    console.error("Airtable webhook ERROR:", err.message);
+  }
+}
+
 export async function handleZaloWebhook(req, res, next) {
   try {
     const { event_name, sender, message } = req.body;
