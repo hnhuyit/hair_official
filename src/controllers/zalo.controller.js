@@ -46,7 +46,7 @@ export async function handleMessZaloOA(req, res, next) {
   };
 
   // 4) Gọi webhook Airtable Automation (link trong ảnh)
-  const url = process.env.AIRTABLE_AUTOMATION_WEBHOOK_URL | "https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wfl3Cq8ckREYevPae/wtrtQUhGM3HS7Bsr8";
+  const url = process.env.AIRTABLE_AUTOMATION_WEBHOOK_URL || "https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wfl3Cq8ckREYevPae/wtrtQUhGM3HS7Bsr8";
   if (!url) {
     console.error("Missing AIRTABLE_AUTOMATION_WEBHOOK_URL");
     return;
