@@ -11,6 +11,33 @@ export async function verifyWebhook(req, res) {
   return res.status(200).send(challenge || "Webhook verified");
 }
 
+function isMessageFromOA(payload) {
+  const senderId = payload?.sender?.id;
+  const oaId = process.env.ZALO_OA_ID || "1721517817153925163";
+
+  return senderId === oaId;
+}
+
+async function getZaloUserProfile(userId) {
+  const url = `https://openapi.zalo.me/v2.0/oa/getprofile?user_id=${userId}`;
+
+  const res = await fetch(url, {
+    headers: {
+      access_token: getOAToken(),
+    },
+  });
+
+  const data = await res.json();
+
+  if (data.error !== 0) {
+    console.error("Zalo get profile error:", data);
+    return null;
+  }
+
+  return data.data; 
+}
+
+
 export async function handleMessZaloOA(req, res, next) {
   // 1) OPTIONAL: verify signature
   // Nếu bạn chưa chắc header signature/timestamp có đúng theo docs payload bạn đang nhận,
@@ -26,11 +53,24 @@ export async function handleMessZaloOA(req, res, next) {
 
   // 3) Chuẩn hoá payload gửi sang Airtable
   const payload = req.body;
+  
+  // ❌ bỏ qua nếu OA tự gửi
+  if (isMessageFromOA(payload)) {
+    console.log("⛔ Ignore message from OA");
+    return;
+  }
 
+  const userId = payload.sender.id;
+
+  // Lấy profile
+  const profile = await getZaloUserProfile(userId);
   // Bạn nên gửi sang Airtable một object gọn + raw để debug
   const airtablePayload = {
     source: "zalo_oa",
     received_at: new Date().toISOString(),
+    name: profile?.display_name ?? null,
+    avatar: profile?.avatar ?? null,
+    gender: profile?.gender ?? null,
 
     // tuỳ payload thực tế của bạn mà map
     app_id: payload?.app_id ?? null,
