@@ -67,7 +67,7 @@ app.use("/mcp", (req, res, next) => {
   return requireAuth(req, res, next);
 });
 
-
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "apptmh0D4kfxxCTn1";
 const MEMBERS_TABLE = process.env.MEMBERS_TABLE || "Customers";
 
@@ -186,7 +186,7 @@ async function lookupByPhone({ phone }) {
   const members = top
     ? [
         {
-          // member_id: top.id,
+          member_id: top.id,
           Name: top.fields?.[FIELD_MEMBER_NAME] || "",
           // chapter: top.fields?.["Chapter"] || "",
           // department: top.fields?.["Department"] || "",
@@ -234,7 +234,7 @@ async function lookupByName({ name }) {
   const members = records.slice(0, 5).map((r) => {
     const last4 = normalizePhone(r.fields?.[FIELD_MEMBER_PHONE] || "").slice(-4);
     return {
-      // member_id: r.id,
+      member_id: r.id,
       Name: r.fields?.[FIELD_MEMBER_NAME] || "",
       phone_last4: last4,
       // chapter: r.fields?.["Chapter"] || "",
