@@ -68,6 +68,121 @@ app.use("/mcp", (req, res, next) => {
   return requireAuth(req, res, next);
 });
 
+
+// ===== Helpers =====
+function ok(id, result, headers = {}) {
+  return { status: 200, body: { jsonrpc: "2.0", id, result }, headers };
+}
+function err(id, code, message, headers = {}) {
+  return { status: 200, body: { jsonrpc: "2.0", id, error: { code, message } }, headers };
+}
+
+// ===== MCP TOOLS =====
+const TOOLS = [
+  {
+    name: "member.lookup_by_phone",
+    description: "Lookup member by phone number",
+    inputSchema: {
+      type: "object",
+      properties: {
+        phone: { type: "string" }
+      },
+      required: ["phone"],
+      additionalProperties: false
+    }
+  }
+];
+
+// ===== TOOL IMPLEMENTATION =====
+async function lookupByPhone({ phone }) {
+  // TODO: thay bằng Airtable thật
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          found: true,
+          members: [
+            {
+              full_name: "Nguyễn Văn A",
+              phone_last4: phone.slice(-4),
+              chapter: "JCI KH",
+              status: "active"
+            }
+          ]
+        })
+      }
+    ]
+  };
+}
+
+// ===== POST /mcp  (JSON-RPC) =====
+async function handler(req, res) {
+  try {
+    const { id, method, params } = req.body || {};
+
+    // initialize
+    if (method === "initialize") {
+      const out = ok(id, {
+        protocolVersion: "2025-06-18",
+        serverInfo: { name: "jci-mcp", version: "1.0.0" },
+        capabilities: { tools: {} }
+      });
+      return res.status(out.status).json(out.body);
+    }
+
+    // tools/list
+    if (method === "tools/list") {
+      const out = ok(id, { tools: TOOLS });
+      return res.status(out.status).json(out.body);
+    }
+
+    // tools/call
+    if (method === "tools/call") {
+      const { name, arguments: args } = params || {};
+      if (name === "member.lookup_by_phone") {
+        const result = await lookupByPhone(args || {});
+        const out = ok(id, result);
+        return res.status(out.status).json(out.body);
+      }
+      const out = err(id, 32601, `Unknown tool: ${name}`);
+      return res.status(out.status).json(out.body);
+    }
+
+    // unknown method
+    const out = err(id, 32601, `Method not found: ${method}`);
+    return res.status(out.status).json(out.body);
+
+  } catch (e) {
+    console.error("MCP error:", e);
+    return res.status(200).json({
+      jsonrpc: "2.0",
+      id: req.body?.id ?? null,
+      error: { code: 32000, message: String(e?.message || e) }
+    });
+  }
+}
+
+// ===== GET /mcp  (SSE keep-alive) =====
+function handlerOrSSE(req, res) {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  // ping mỗi 15s để giữ kết nối
+  const timer = setInterval(() => {
+    res.write(`event: ping\ndata: {}\n\n`);
+  }, 15000);
+
+  req.on("close", () => {
+    clearInterval(timer);
+  });
+}
+
+// ===== ROUTES =====
+app.post("/mcp", handler);
+app.get("/mcp", handlerOrSSE);
+
 // Ghi log bằng morgan & middleware custom
 app.use(morgan("dev"));
 app.use(logRequest);
