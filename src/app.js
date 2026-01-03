@@ -42,7 +42,7 @@ app.use(express.static("public"));
 //   next();
 // });
 
-const NO_AUTH = String(process.env.MCP_NO_AUTH || "").toLowerCase() === "true";
+// const NO_AUTH = String(process.env.MCP_NO_AUTH || "").toLowerCase() === "true";
 
 function requireAuth(req, res, next) {
   if (NO_AUTH) return next();
@@ -61,7 +61,12 @@ function requireAuth(req, res, next) {
   next();
 }
 
-app.use("/mcp", requireAuth);
+const NO_AUTH = String(process.env.MCP_NO_AUTH || "").toLowerCase() === "true";
+
+app.use("/mcp", (req, res, next) => {
+  if (true) return next();     // ✅ bypass auth
+  return requireAuth(req, res, next);
+});
 
 // Ghi log bằng morgan & middleware custom
 app.use(morgan("dev"));
