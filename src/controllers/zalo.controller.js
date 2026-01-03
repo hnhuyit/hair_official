@@ -60,17 +60,17 @@ export async function handleMessZaloOA(req, res, next) {
     return;
   }
 
-  const userId = payload.sender.id;
+  // const userId = payload.sender.id;
 
   // Lấy profile
-  const profile = await getZaloUserProfile(userId);
+  // const profile = await getZaloUserProfile(userId);
   // Bạn nên gửi sang Airtable một object gọn + raw để debug
   const airtablePayload = {
     source: "zalo_oa",
     received_at: new Date().toISOString(),
-    name: profile?.display_name ?? null,
-    avatar: profile?.avatar ?? null,
-    gender: profile?.gender ?? null,
+    // name: profile?.display_name ?? null,
+    // avatar: profile?.avatar ?? null,
+    // gender: profile?.gender ?? null,
 
     // tuỳ payload thực tế của bạn mà map
     app_id: payload?.app_id ?? null,

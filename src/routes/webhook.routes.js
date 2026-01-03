@@ -12,7 +12,7 @@ const router = express.Router();
 // GET xác thực webhook (nếu cần)
 router.get("/webhook", verifyWebhook);
 router.get("/ig-webhook", verifyWebhookIG);
-router.get("/fb-webhook", verifyWebhookFB);
+// router.get("/fb-webhook", verifyWebhookFB);
 router.get("/wa-webhook", verifyWebhookWA);
 // router.get("/messaging-webhook", verifyWebhookMessager); //webhook cũ 
 
@@ -25,7 +25,7 @@ router.post("/webhook", handleMessZaloOA);
 
 router.post("/ig-webhook", handleIGWebhook);
 // router.post("/fb-webhook", handleFacebookWebhook);
-router.post("/fb-webhook", handleWithAIAgent);
+// router.post("/fb-webhook", handleWithAIAgent);
 router.post("/wa-webhook", handleWAWebhook);
 // router.post("/messaging-webhook", handleMessagerWebhook);
 
