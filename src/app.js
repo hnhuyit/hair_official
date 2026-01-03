@@ -42,6 +42,27 @@ app.use(express.static("public"));
 //   next();
 // });
 
+const NO_AUTH = String(process.env.MCP_NO_AUTH || "").toLowerCase() === "true";
+
+function requireAuth(req, res, next) {
+  if (NO_AUTH) return next();
+
+  const auth = req.headers["authorization"] || "";
+  const bearer = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : null;
+
+  const apiKey = req.headers["x-api-key"] ? String(req.headers["x-api-key"]) : null;
+  const token = bearer || apiKey;
+
+  if (!token || token !== process.env.MCP_ACCESS_TOKEN) {
+    return res.status(401).json({ error: { message: "Unauthorized" } });
+  }
+  next();
+}
+
+app.use("/mcp", requireAuth);
+
 // Ghi log bằng morgan & middleware custom
 app.use(morgan("dev"));
 app.use(logRequest);
