@@ -213,7 +213,11 @@ async function lookupByName({ name }) {
   // Escape quotes for formula safety
   const safe = n.replace(/"/g, '\\"');
 
-  const formula = `AND(SEARCH("${safe}", {${FIELD_MEMBER_NAME}}), NOT({${FIELD_DELETED}}))`;
+  const tokens = safe.split(/\s+/).filter(Boolean);
+  const andSearch = tokens.map(t => `SEARCH("${t}", {${FIELD_MEMBER_NAME}})`).join(", ");
+  const formula = `AND(${andSearch}, NOT({${FIELD_DELETED}}))`;
+
+  // const formula = `AND(SEARCH("${safe}", {${FIELD_MEMBER_NAME}}), NOT({${FIELD_DELETED}}))`;
 
   const records = await airtableList({
     tableName: MEMBERS_TABLE,
