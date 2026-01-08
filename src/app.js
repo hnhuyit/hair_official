@@ -174,6 +174,7 @@ async function lookupByPhone({ phone }) {
       // "Chapter",
       // "Department",
       "member_status",
+      "Bài viết giới thiệu về thành viên",
       FIELD_DELETED,
       FIELD_CREATED,
     ],
@@ -189,7 +190,7 @@ async function lookupByPhone({ phone }) {
           member_id: top.id,
           Name: top.fields?.[FIELD_MEMBER_NAME] || "",
           // chapter: top.fields?.["Chapter"] || "",
-          // department: top.fields?.["Department"] || "",
+          "Bài viết giới thiệu về thành viên": top.fields?.["Bài viết giới thiệu về thành viên"] || "",
           member_status: top.fields?.["member_status"] || "",
         },
       ]
@@ -223,6 +224,7 @@ async function lookupByName({ name }) {
       // "Chapter",
       // "Department",
       "member_status",
+      "Bài viết giới thiệu về thành viên",
       FIELD_DELETED,
       FIELD_CREATED,
     ],
@@ -238,7 +240,7 @@ async function lookupByName({ name }) {
       Name: r.fields?.[FIELD_MEMBER_NAME] || "",
       phone_last4: last4,
       // chapter: r.fields?.["Chapter"] || "",
-      // department: r.fields?.["Department"] || "",
+      "Bài viết giới thiệu về thành viên": top.fields?.["Bài viết giới thiệu về thành viên"] || "",
       member_status: r.fields?.["member_status"] || "",
     };
   });
