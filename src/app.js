@@ -240,7 +240,7 @@ async function lookupByName({ name }) {
       Name: r.fields?.[FIELD_MEMBER_NAME] || "",
       phone_last4: last4,
       // chapter: r.fields?.["Chapter"] || "",
-      "Bài viết giới thiệu về thành viên": top.fields?.["Bài viết giới thiệu về thành viên"] || "",
+      "Bài viết giới thiệu về thành viên": r.fields?.["Bài viết giới thiệu về thành viên"] || "",
       member_status: r.fields?.["member_status"] || "",
     };
   });
