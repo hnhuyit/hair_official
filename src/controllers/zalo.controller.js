@@ -13,7 +13,7 @@ export async function verifyWebhook(req, res) {
 
 function isMessageFromOA(payload) {
   const senderId = payload?.sender?.id;
-  const oaId = process.env.ZALO_OA_ID || "1721517817153925163";
+  const oaId = process.env.ZALO_OA_ID || "894893212671527808" //"1721517817153925163";
 
   return senderId === oaId;
 }

@@ -458,6 +458,7 @@ export async function handleIGWebhook(req, res) {
 export async function handleWAWebhook(req, res) {
   try {
     const body = req.body;
+    console.log("📥 [IG Webhook] Payload nhận được:", JSON.stringify(body, null, 2));
 
     // Chỉ nhận từ WhatsApp Business
     if (body?.object !== "whatsapp_business_account") {
