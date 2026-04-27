@@ -64,6 +64,7 @@ export async function verifyWebhookWA(req, res) {
   // // Đơn giản trả về echostr nếu có logic xác thực cho GET webhook
   // const { hub: { challenge } } = req.query;
   // return res.status(200).send(challenge || "FB Webhook verified");
+  console.log("📥 [WA Webhook] Payload nhận được:", JSON.stringify(body, null, 2));
 
   // Parse the query params
   let mode = req.query["hub.mode"];
