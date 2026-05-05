@@ -735,6 +735,7 @@ async function handler(req, res) {
 
         const result = await searchPartner({
           uid: args.uid,
+          member_status: args.member_status,
           industry: args.industry,
           limit: args.limit || 3
         });
