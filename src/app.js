@@ -214,15 +214,25 @@ async function getMemberStatusByUid(uid) {
 async function createUser(args) {
   log("createUser called with:", args);
   const uid = String(args.uid || args.zalo_uid || "").trim();
-  const memberStatusRaw = String(args.member_status || "guest").trim().toLowerCase();
+  // const memberStatusRaw = String(args.member_status || "guest").trim().toLowerCase();
 
-  const memberStatus = ["guest", "member"].includes(memberStatusRaw)
-    ? memberStatusRaw
-    : "guest";
+  // const memberStatus = ["guest", "member"].includes(memberStatusRaw)
+    // ? memberStatusRaw
+    // : "guest";
 
-  log("Parsed:", { uid, memberStatus });
+  // log("Parsed:", { uid, memberStatus });
 
-  if (!uid) throw new Error("Missing uid");
+  if (!uid) {
+    return {
+      success: false,
+      action: "skipped",
+      user: {
+        uid: "",
+        member_status: "guest",
+      },
+      message: "UID rỗng, xử lý như người chưa là thành viên JCI.",
+    };
+  }
 
   const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
 
@@ -242,7 +252,7 @@ async function createUser(args) {
       user: {
         uid,
         name: record.fields.Name || "",
-        member_status: record.fields.member_status || memberStatus,
+        member_status: record.fields.member_status,
       },
     };
   }
@@ -251,7 +261,7 @@ async function createUser(args) {
   const created = await airtableCreate(TABLE_CUSTOMERS, {
     uid: uid,
     Name: "Unknown User",
-    member_status: memberStatus,
+    member_status: "guest",
     // Source: "JCI Chatbot",
     // CreatedAt: new Date().toISOString(),
   });
@@ -263,7 +273,7 @@ async function createUser(args) {
     user: {
       uid,
       name: created.fields.Name || "Unknown User",
-      member_status: created.fields.member_status,
+      member_status: "guest",
     },
   };
 }
