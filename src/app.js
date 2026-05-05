@@ -436,19 +436,20 @@ async function lookupByName(args) {
     })),
   };
 }
-
 async function searchPartner(args) {
   log("searchPartner called with:", args);
+
   const uid = String(args.uid || "").trim();
   const memberStatus = String(args.member_status || "").trim();
-  const industry = String(args.industry || "").trim();
+  const query = String(args.industry || args.query || "").trim();
   const limit = Number(args.limit || 3);
-  log("Parsed:", { uid, memberStatus, industry });
+
+  log("Parsed:", { uid, memberStatus, query, limit });
 
   if (!uid) throw new Error("Missing uid");
-  if (!industry) throw new Error("Missing industry");
+  if (!query) throw new Error("Missing query");
 
-  // Backend guardrail: guest không được query data nội bộ
+  // Guardrail
   if (memberStatus !== "member") {
     log("BLOCKED: Non-member tried to access partner search");
     return {
@@ -459,41 +460,40 @@ async function searchPartner(args) {
     };
   }
 
-  const keyword = escapeFormulaValue(industry);
-
-  
-  const formula = `AND(
-    OR(
-      SEARCH(LOWER("${keyword}"), LOWER({NGÀNH NGHỀ})) > 0,
-      SEARCH(LOWER("${keyword}"), LOWER({CÔNG TY})) > 0,
-      SEARCH(LOWER("${keyword}"), LOWER({CHỨC VỤ})) > 0,
-      SEARCH(LOWER("${keyword}"), LOWER({CHỨC DANH})) > 0
-    ),
-    {${FIELD_DELETED}} = FALSE()
-  )`;
+  // 🔥 chỉ lấy data chưa xoá
+  const formula = `{${FIELD_DELETED}} = FALSE()`;
 
   const data = await airtableGet(
     TABLE_CUSTOMERS,
-    `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=${limit}`
+    `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=100`
   );
-  log("Partner results:", data.records?.length);
+
+  log("Raw records:", data.records?.length);
 
   if (!data.records?.length) {
     return {
       allowed: true,
       found: false,
-      query: industry,
-      message: `Chưa tìm thấy đối tác phù hợp với ngành "${industry}".`,
+      query,
+      message: `Chưa tìm thấy đối tác phù hợp với "${query}".`,
       results: [],
     };
   }
 
-  return {
-    allowed: true,
-    found: true,
-    query: industry,
-    count: data.records.length,
-    results: data.records.map((r) => ({
+  // 🔥 normalize + build text để AI hiểu
+  const profiles = data.records.map((r) => {
+    const text = [
+      r.fields.Name,
+      r.fields["CÔNG TY"],
+      r.fields["NGÀNH NGHỀ"],
+      r.fields["CHỨC VỤ"],
+      r.fields["CHỨC DANH"]
+    ]
+      .filter(Boolean)
+      .join(" | ")
+      .toLowerCase();
+
+    return {
       name: r.fields.Name || "",
       title: r.fields["CHỨC DANH"] || "",
       chapter: r.fields.Chapter || "",
@@ -502,8 +502,58 @@ async function searchPartner(args) {
       industry: r.fields["NGÀNH NGHỀ"] || "",
       business_description: `${r.fields["CÔNG TY"] || ""} - ${r.fields["NGÀNH NGHỀ"] || ""}`,
       phone_masked: maskPhone(r.fields.phone),
-      contact_note: "Vui lòng liên hệ BTC để được hỗ trợ kết nối chính thức.",
-    })),
+      contact_note: "Liên hệ BTC để được kết nối.",
+      _text: text,
+    };
+  });
+
+  // 🔥 scoring đơn giản (pre-filter)
+  const keyword = query.toLowerCase();
+
+  const scored = profiles.map((p) => {
+    let score = 0;
+
+    if (p._text.includes(keyword)) score += 5;
+
+    // match từng từ
+    keyword.split(" ").forEach((w) => {
+      if (p._text.includes(w)) score += 1;
+    });
+
+    return { ...p, _score: score };
+  });
+
+  // 🔥 lấy top 20 cho AI (không gửi hết)
+  const topCandidates = scored
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 20);
+
+  log("Top candidates:", topCandidates.length);
+
+  return {
+    allowed: true,
+    found: true,
+    query,
+    count: topCandidates.length,
+
+    // 🔥 QUAN TRỌNG: instruction cho AI
+    instruction: `
+      Bạn là AI matching engine.
+
+      Yêu cầu:
+      - Hiểu truy vấn: "${query}"
+      - Chọn đúng ${limit} profile phù hợp nhất theo NGỮ NGHĨA (không chỉ keyword)
+      - Ưu tiên:
+        1. Ngành nghề liên quan
+        2. Khả năng hợp tác
+        3. Vai trò phù hợp
+
+      Output:
+      - Trả về đúng ${limit} profile
+      - Format: name + company + role + reason (1 dòng)
+      `,
+
+    results: topCandidates.map(({ _text, _score, ...rest }) => rest),
   };
 }
 
