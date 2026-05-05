@@ -502,7 +502,7 @@ export async function handleWAWebhook(req, res) {
     };
 
     // Forward sang Airtable Automation Webhook
-    await fetch("https://hooks.airtable.com/workflows/v1/genericWebhook/app8QrLwvbj6L6Mw2/wfl8C3pwhXh2uCUv0/wtrc1gvrVlqlOwfBT", {
+    await fetch("https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wflaCgyBIJpEiawvi/wtriAZtPsruBfuYWd", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
