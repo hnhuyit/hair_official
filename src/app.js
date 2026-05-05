@@ -43,30 +43,6 @@ app.use(express.static("public"));
 // });
 
 
-function requireAuth(req, res, next) {
-  if (NO_AUTH) return next();
-
-  const auth = req.headers["authorization"] || "";
-  const bearer = auth.toLowerCase().startsWith("bearer ")
-    ? auth.slice(7).trim()
-    : null;
-
-  const apiKey = req.headers["x-api-key"] ? String(req.headers["x-api-key"]) : null;
-  const token = bearer || apiKey;
-
-  if (!token || token !== process.env.MCP_ACCESS_TOKEN) {
-    return res.status(401).json({ error: { message: "Unauthorized" } });
-  }
-  next();
-}
-
-const NO_AUTH = String(process.env.MCP_NO_AUTH || "").toLowerCase() === "true";
-
-app.use("/mcp", (req, res, next) => {
-  if (true) return next();     // ✅ bypass auth
-  return requireAuth(req, res, next);
-});
-
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "apptmh0D4kfxxCTn1";
 const MEMBERS_TABLE = process.env.MEMBERS_TABLE || "Customers";
@@ -118,41 +94,6 @@ async function airtableList({ tableName, filterByFormula, fields = [], pageSize 
   if (!r.ok) throw new Error(`Airtable error (${r.status}): ${JSON.stringify(data)}`);
   return data.records || [];
 }
-
-
-// ===== Helpers =====
-function ok(id, result, headers = {}) {
-  return { status: 200, body: { jsonrpc: "2.0", id, result }, headers };
-}
-function err(id, code, message, headers = {}) {
-  return { status: 200, body: { jsonrpc: "2.0", id, error: { code, message } }, headers };
-}
-
-// ===== MCP TOOLS =====
-const TOOLS = [
-  {
-    name: "member.lookup_by_phone",
-    description:
-      "Lookup a member by phone number. Normalizes phone, filters deleted=true, returns newest record.",
-    inputSchema: {
-      type: "object",
-      properties: { phone: { type: "string" } },
-      required: ["phone"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "member.lookup_by_name",
-    description:
-      "Lookup members by name (partial match). Filters deleted=true, returns up to 5 newest matches with phone_last4.",
-    inputSchema: {
-      type: "object",
-      properties: { name: { type: "string" } },
-      required: ["name"],
-      additionalProperties: false,
-    },
-  },
-];
 
 // ===== TOOL IMPLEMENTATION =====
 async function lookupByPhone({ phone }) {
@@ -256,75 +197,270 @@ async function lookupByName({ name }) {
   };
 }
 
-// ====== POST /mcp (JSON-RPC) ======
+// ===== JSON-RPC HELPERS =====
+function ok(id, result) {
+  return {
+    status: 200,
+    body: {
+      jsonrpc: "2.0",
+      id,
+      result
+    }
+  };
+}
+
+function err(id, code, message) {
+  return {
+    status: 200,
+    body: {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code,
+        message
+      }
+    }
+  };
+}
+
+// ===== MCP TOOLS =====
+const TOOLS = [
+  {
+    name: "user.create",
+    description: "Create new JCI user when UID does not exist",
+    inputSchema: {
+      type: "object",
+      properties: {
+        uid: { type: "string" },
+        name: { type: "string" },
+        member_status: { type: "string", enum: ["guest", "member"] }
+      },
+      required: ["uid"]
+    }
+  },
+  {
+    name: "member.lookup_by_phone",
+    description: "Lookup JCI member by phone number",
+    inputSchema: {
+      type: "object",
+      properties: {
+        phone: { type: "string" }
+      },
+      required: ["phone"]
+    }
+  },
+  {
+    name: "member.lookup_by_name",
+    description: "Lookup JCI member by name",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string" }
+      },
+      required: ["name"]
+    }
+  },
+  {
+    name: "partner.search",
+    description: "Search internal JCI partner profiles by industry. Member only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        uid: { type: "string" },
+        member_status: { type: "string", enum: ["guest", "member"] },
+        industry: { type: "string" },
+        limit: { type: "number", default: 3 }
+      },
+      required: ["uid", "member_status", "industry"]
+    }
+  }
+];
+
+
+
+// ====== POST /mcp ======
 async function handler(req, res) {
   try {
     const { id, method, params } = req.body || {};
 
     if (!method) {
-      const out = err(id ?? null, 32600, "Invalid Request");
+      const out = err(id ?? null, -32600, "Invalid Request");
       return res.status(out.status).json(out.body);
     }
 
+    // 1. MCP initialize
     if (method === "initialize") {
       const out = ok(id, {
         protocolVersion: "2025-06-18",
-        serverInfo: { name: "jci-mcp", version: "1.0.0" },
-        capabilities: { tools: {} },
+        serverInfo: {
+          name: "jci-mcp",
+          version: "1.0.0"
+        },
+        capabilities: {
+          tools: {}
+        }
       });
+
       return res.status(out.status).json(out.body);
     }
 
+    // 2. MCP tools/list
     if (method === "tools/list") {
-      const out = ok(id, { tools: TOOLS });
+      const out = ok(id, {
+        tools: TOOLS
+      });
+
       return res.status(out.status).json(out.body);
     }
 
+    // 3. MCP tools/call
     if (method === "tools/call") {
       const toolName = params?.name;
       const args = params?.arguments || {};
 
       if (!toolName) {
-        const out = err(id, 32602, "Missing tool name");
+        const out = err(id, -32602, "Missing tool name");
         return res.status(out.status).json(out.body);
       }
 
+      // ===== USER CREATE =====
+      if (toolName === "user.create") {
+        if (!args.uid) {
+          const out = err(id, -32602, "Missing uid");
+          return res.status(out.status).json(out.body);
+        }
+
+        const result = await createUser(args);
+
+        const out = ok(id, {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result)
+            }
+          ]
+        });
+
+        return res.status(out.status).json(out.body);
+      }
+
+      // ===== MEMBER LOOKUP BY PHONE =====
       if (toolName === "member.lookup_by_phone") {
+        if (!args.phone) {
+          const out = err(id, -32602, "Missing phone");
+          return res.status(out.status).json(out.body);
+        }
+
         const result = await lookupByPhone(args);
-        const out = ok(id, result);
+
+        const out = ok(id, {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result)
+            }
+          ]
+        });
+
         return res.status(out.status).json(out.body);
       }
 
+      // ===== MEMBER LOOKUP BY NAME =====
       if (toolName === "member.lookup_by_name") {
+        if (!args.name) {
+          const out = err(id, -32602, "Missing name");
+          return res.status(out.status).json(out.body);
+        }
+
         const result = await lookupByName(args);
-        const out = ok(id, result);
+
+        const out = ok(id, {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result)
+            }
+          ]
+        });
+
         return res.status(out.status).json(out.body);
       }
 
-      const out = err(id, 32601, `Unknown tool: ${toolName}`);
+      // ===== PARTNER SEARCH - MEMBER ONLY =====
+      if (toolName === "partner.search") {
+        if (!args.uid) {
+          const out = err(id, -32602, "Missing uid");
+          return res.status(out.status).json(out.body);
+        }
+
+        if (args.member_status !== "member") {
+          const out = ok(id, {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  allowed: false,
+                  message:
+                    "Tính năng tra cứu dữ liệu nội bộ chỉ dành cho thành viên JCI."
+                })
+              }
+            ]
+          });
+
+          return res.status(out.status).json(out.body);
+        }
+
+        if (!args.industry) {
+          const out = err(id, -32602, "Missing industry");
+          return res.status(out.status).json(out.body);
+        }
+
+        const result = await searchPartner({
+          uid: args.uid,
+          industry: args.industry,
+          limit: args.limit || 3
+        });
+
+        const out = ok(id, {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result)
+            }
+          ]
+        });
+
+        return res.status(out.status).json(out.body);
+      }
+
+      const out = err(id, -32601, `Unknown tool: ${toolName}`);
       return res.status(out.status).json(out.body);
     }
 
-    const out = err(id, 32601, `Method not found: ${method}`);
+    const out = err(id, -32601, `Method not found: ${method}`);
     return res.status(out.status).json(out.body);
-
   } catch (e) {
     console.error("MCP error:", e);
+
     return res.status(200).json({
       jsonrpc: "2.0",
       id: req.body?.id ?? null,
-      error: { code: 32000, message: String(e?.message || e) },
+      error: {
+        code: 32000,
+        message: String(e?.message || e)
+      }
     });
   }
 }
 
-// ===== GET /mcp  (SSE keep-alive) =====
+// ===== GET /mcp - SSE KEEP ALIVE =====
 function handlerOrSSE(req, res) {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  // ping mỗi 15s để giữ kết nối
+  res.write(`event: ready\ndata: {"status":"connected"}\n\n`);
+
   const timer = setInterval(() => {
     res.write(`event: ping\ndata: {}\n\n`);
   }, 15000);
@@ -333,6 +469,34 @@ function handlerOrSSE(req, res) {
     clearInterval(timer);
   });
 }
+
+const NO_AUTH = String(process.env.MCP_NO_AUTH || "").toLowerCase() === "true";
+
+function requireAuth(req, res, next) {
+  if (NO_AUTH) return next();
+
+  const auth = req.headers["authorization"] || "";
+  const bearer = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : null;
+
+  const apiKey = req.headers["x-api-key"]
+    ? String(req.headers["x-api-key"]).trim()
+    : null;
+
+  const token = bearer || apiKey;
+
+  if (!token || token !== process.env.MCP_ACCESS_TOKEN) {
+    return res.status(401).json({ error: { message: "Unauthorized" } });
+  }
+
+  next();
+}
+
+app.use("/mcp", (req, res, next) => {
+  if (true) return next();     // ✅ bypass auth
+  return requireAuth(req, res, next);
+});
 
 // ===== ROUTES =====
 app.post("/mcp", handler);
