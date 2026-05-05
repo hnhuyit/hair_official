@@ -18,16 +18,16 @@ import { refreshOAToken } from "../src/config/index.js";
 const PORT = process.env.PORT || 3000;
 (async () => {
   // Refresh token ngay khi khởi động lại server (deploy)
-  await refreshOAToken();
+  // await refreshOAToken();
   
   // Khởi tạo server
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
   
-  // Nếu bạn muốn refresh token định kỳ, bạn vẫn có thể giữ lại cron job ở đây
-  cron.schedule("30 1 * * *", async () => {
-    console.log("[CRON] 1:30AM - Refreshing OA token...");
-    await refreshOAToken();
-  });
+  // // Nếu bạn muốn refresh token định kỳ, bạn vẫn có thể giữ lại cron job ở đây
+  // cron.schedule("30 1 * * *", async () => {
+  //   console.log("[CRON] 1:30AM - Refreshing OA token...");
+  //   await refreshOAToken();
+  // });
 })();
