@@ -141,10 +141,13 @@ async function airtableCreate(table, fields) {
 async function createUser(args) {
   log("createUser called with:", args);
   const uid = String(args.uid || args.zalo_uid || "").trim();
-  const name = String(args.name || "").trim();
-  const memberStatus = String(args.member_status || "guest").trim();
+  const memberStatusRaw = String(args.member_status || "guest").trim().toLowerCase();
 
-  log("Parsed:", { uid, name, memberStatus });
+  const memberStatus = ["guest", "member"].includes(memberStatusRaw)
+    ? memberStatusRaw
+    : "guest";
+
+  log("Parsed:", { uid, memberStatus });
 
   if (!uid) throw new Error("Missing uid");
 
@@ -165,7 +168,7 @@ async function createUser(args) {
       action: "exists",
       user: {
         uid,
-        name: record.fields.Name || name,
+        name: record.fields.Name || "",
         member_status: record.fields.member_status || memberStatus,
       },
     };
@@ -174,7 +177,7 @@ async function createUser(args) {
   log("Creating new user...");
   const created = await airtableCreate(TABLE_CUSTOMERS, {
     uid: uid,
-    Name: name || "Unknown User",
+    Name: "Unknown User",
     member_status: memberStatus,
     // Source: "JCI Chatbot",
     // CreatedAt: new Date().toISOString(),
@@ -186,7 +189,7 @@ async function createUser(args) {
     action: "created",
     user: {
       uid,
-      name: created.fields.Name,
+      name: created.fields.Name || "Unknown User",
       member_status: created.fields.member_status,
     },
   };
