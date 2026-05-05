@@ -57,6 +57,8 @@ if (!AIRTABLE_API_KEY) throw new Error("Missing AIRTABLE_API_KEY");
 
 // ====== Airtable helpers ======
 const AIRTABLE_API = "https://api.airtable.com/v0";
+// ✅ FIX Ở ĐÂY
+const AIRTABLE_URL = `${AIRTABLE_API}/${AIRTABLE_BASE_ID}`;
 
 function airtableHeaders() {
   return {
