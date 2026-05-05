@@ -186,6 +186,31 @@ async function airtableCreate(table, fields) {
 
 // ===== TOOL IMPLEMENTATION =====
 
+async function getMemberStatusByUid(uid) {
+  if (!uid) return "guest";
+
+  const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
+
+  const data = await airtableGet(
+    TABLE_CUSTOMERS,
+    `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
+  );
+
+  if (!data.records?.length) {
+    return "guest";
+  }
+
+  const record = data.records[0];
+
+  // ⚠️ tùy field của bạn
+  const rawStatus =
+    record.fields.member_status ||
+    record.fields.MEMBER ||
+    "guest";
+
+  return String(rawStatus).toLowerCase();
+}
+
 async function createUser(args) {
   log("createUser called with:", args);
   const uid = String(args.uid || args.zalo_uid || "").trim();
@@ -436,26 +461,29 @@ async function lookupByName(args) {
     })),
   };
 }
+
 async function searchPartner(args) {
   log("searchPartner called with:", args);
 
   const uid = String(args.uid || "").trim();
-  const memberStatus = String(args.member_status || "").trim();
+  // const memberStatus = String(args.member_status || "").trim();
   const query = String(args.industry || args.query || "").trim();
   const limit = Number(args.limit || 3);
 
-  log("Parsed:", { uid, memberStatus, query, limit });
+  // log("Parsed:", { uid, memberStatus, query, limit });
 
   if (!uid) throw new Error("Missing uid");
   if (!query) throw new Error("Missing query");
 
-  // Guardrail
-  if (memberStatus !== "member") {
-    log("BLOCKED: Non-member tried to access partner search");
+  const dbMemberStatus = await getMemberStatusByUid(uid);
+
+  log("DB member status:", dbMemberStatus);
+
+  if (dbMemberStatus !== "member") {
     return {
       allowed: false,
       found: false,
-      message: "Tính năng tra cứu đối tác nội bộ chỉ dành cho thành viên JCI.",
+      message: "Tính năng kết nối đối tác nội bộ hiện dành cho thành viên JCI.",
       results: [],
     };
   }
