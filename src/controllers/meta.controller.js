@@ -61,27 +61,39 @@ export async function verifyWebhookFB(req, res) {
 }
 
 export async function verifyWebhookWA(req, res) {
-  // // Đơn giản trả về echostr nếu có logic xác thực cho GET webhook
-  // const { hub: { challenge } } = req.query;
-  // return res.status(200).send(challenge || "FB Webhook verified");
-  console.log("📥 [WA Webhook] Payload nhận được:", JSON.stringify(body, null, 2));
+  try {
+    // 🔥 LOG đúng cách
+    console.log("📥 [WA Webhook] Query:", req.query);
 
-  // Parse the query params
-  let mode = req.query["hub.mode"];
-  let token = req.query["hub.verify_token"];
-  let challenge = req.query["hub.challenge"];
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
 
-  // Check if a token and mode is in the query string of the request
-  if (mode && token) {
-    // Check the mode and token sent is correct
-    if (mode === "subscribe" && token === "1234567890") {
-      // Respond with the challenge token from the request
-      console.log("WEBHOOK_VERIFIED");
-      res.status(200).send(challenge);
-    } else {
-      // Respond with '403 Forbidden' if verify tokens do not match
-      res.status(403).send("Forbidden – Token mismatch");
+    // 🔐 dùng env
+    const VERIFY_TOKEN = "1234567890";
+
+    if (!VERIFY_TOKEN) {
+      console.error("❌ Missing WA_VERIFY_TOKEN");
+      return res.status(500).send("Server config error");
     }
+
+    // Check if mode & token exist
+    if (mode && token) {
+      if (mode === "subscribe" && token === VERIFY_TOKEN) {
+        console.log("✅ WEBHOOK VERIFIED");
+
+        return res.status(200).send(challenge);
+      } else {
+        console.error("❌ Token mismatch");
+
+        return res.status(403).send("Forbidden");
+      }
+    }
+
+    return res.status(400).send("Bad Request");
+  } catch (err) {
+    console.error("❌ Webhook verify error:", err);
+    return res.status(500).send("Internal Server Error");
   }
 }
 
