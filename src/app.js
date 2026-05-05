@@ -77,6 +77,13 @@ function maskPhone(phone = "") {
   if (raw.length < 4) return "****";
   return `****${raw.slice(-4)}`;
 }
+function maskEmail(email = "") {
+  const [name, domain] = String(email).split("@");
+  if (!name || !domain) return "";
+
+  const visible = name.slice(0, 2);
+  return `${visible}***@${domain}`;
+}
 
 // async function airtableGet(table, query = "") {
 //   const url = `${AIRTABLE_URL}/${encodeURIComponent(table)}${query}`;
@@ -297,7 +304,8 @@ async function lookupByPhone(args) {
     FIND(
       "${escapeFormulaValue(cleanedPhone)}",
       SUBSTITUTE(SUBSTITUTE(SUBSTITUTE({phone}, " ", ""), "-", ""), "+", "")
-    ) > 0
+    ) > 0,
+    {deleted_flag} = FALSE()
   `;
 
   const data = await airtableGet(
@@ -390,7 +398,10 @@ async function lookupByName(args) {
   const name = String(args.name || "").trim();
   if (!name) throw new Error("Missing name");
 
-  const formula = `SEARCH(LOWER("${escapeFormulaValue(name)}"), LOWER({Name})) > 0`;
+  const formula = `AND(
+    SEARCH(LOWER("${safeName}"), LOWER({Name})) > 0,
+    {${FIELD_DELETED}} = FALSE()
+  )`;
 
   const data = await airtableGet(
     TABLE_CUSTOMERS,
@@ -456,6 +467,7 @@ async function searchPartner(args) {
       SEARCH(LOWER("${keyword}"), LOWER({CHỨC VỤ})) > 0,
       SEARCH(LOWER("${keyword}"), LOWER({CHỨC DANH})) > 0
     )
+    {${FIELD_DELETED}} = FALSE()
   `;
 
   const data = await airtableGet(
