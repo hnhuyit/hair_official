@@ -460,15 +460,16 @@ async function searchPartner(args) {
 
   const keyword = escapeFormulaValue(industry);
 
-  const formula = `
+  
+  const formula = `AND(
     OR(
       SEARCH(LOWER("${keyword}"), LOWER({NGÀNH NGHỀ})) > 0,
       SEARCH(LOWER("${keyword}"), LOWER({CÔNG TY})) > 0,
       SEARCH(LOWER("${keyword}"), LOWER({CHỨC VỤ})) > 0,
       SEARCH(LOWER("${keyword}"), LOWER({CHỨC DANH})) > 0
-    )
+    ),
     {${FIELD_DELETED}} = FALSE()
-  `;
+  )`;
 
   const data = await airtableGet(
     TABLE_CUSTOMERS,
