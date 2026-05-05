@@ -300,13 +300,13 @@ async function lookupByPhone(args) {
   const cleanedPhone = phone.replace(/\D/g, "");
   log("Cleaned phone:", cleanedPhone);
 
-  const formula = `
+  const formula = `AND(
     FIND(
       "${escapeFormulaValue(cleanedPhone)}",
       SUBSTITUTE(SUBSTITUTE(SUBSTITUTE({phone}, " ", ""), "-", ""), "+", "")
     ) > 0,
     {deleted_flag} = FALSE()
-  `;
+  )`;
 
   const data = await airtableGet(
     TABLE_CUSTOMERS,
