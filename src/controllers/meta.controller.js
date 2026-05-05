@@ -501,12 +501,12 @@ export async function handleWAWebhook(req, res) {
       raw: msg                                   // nếu muốn, Airtable có thể lưu vào Long text
     };
 
-    // Forward sang Airtable Automation Webhook
-    await fetch("https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wflaCgyBIJpEiawvi/wtriAZtPsruBfuYWd", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    // // Forward sang Airtable Automation Webhook
+    // await fetch("https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wflaCgyBIJpEiawvi/wtriAZtPsruBfuYWd", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify(payload)
+    // });
 
     // Trả 200 sớm để Meta không retry
     return res.sendStatus(200);
