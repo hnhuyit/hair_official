@@ -78,14 +78,55 @@ function maskPhone(phone = "") {
   return `****${raw.slice(-4)}`;
 }
 
+// async function airtableGet(table, query = "") {
+//   const url = `${AIRTABLE_URL}/${encodeURIComponent(table)}${query}`;
+//   const res = await fetch(url, { headers: airtableHeaders() });
+//   const data = await res.json();
+
+//   if (!res.ok) {
+//     throw new Error(data?.error?.message || `Airtable GET error ${res.status}`);
+//   }
+
+//   return data;
+// }
+
 async function airtableGet(table, query = "") {
+  if (!AIRTABLE_API_KEY) {
+    throw new Error("Missing AIRTABLE_API_KEY");
+  }
+
+  if (!AIRTABLE_BASE_ID) {
+    throw new Error("Missing AIRTABLE_BASE_ID");
+  }
+
   const url = `${AIRTABLE_URL}/${encodeURIComponent(table)}${query}`;
-  const res = await fetch(url, { headers: airtableHeaders() });
-  const data = await res.json();
+
+  console.log("[Airtable GET]:", url);
+
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), 10000);
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: airtableHeaders(),
+    signal: controller.signal,
+  });
+
+  let data;
+
+  try {
+    data = await res.json();
+  } catch (e) {
+    console.error("[Airtable ERROR] Invalid JSON");
+    throw new Error("Invalid Airtable response");
+  }
 
   if (!res.ok) {
+    console.error("[Airtable ERROR]:", data);
     throw new Error(data?.error?.message || `Airtable GET error ${res.status}`);
   }
+
+  console.log("[Airtable SUCCESS]:", data.records?.length || 0);
 
   return data;
 }
