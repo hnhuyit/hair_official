@@ -663,6 +663,7 @@ const TOOLS = [
       type: "object",
       properties: {
         uid: { type: "string" },
+        member_status: { type: "string", enum: ["guest", "member"] },
         industry: { type: "string" },
         limit: { type: "number", default: 3 }
       },
