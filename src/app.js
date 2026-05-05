@@ -398,6 +398,7 @@ async function lookupByName(args) {
   const name = String(args.name || "").trim();
   if (!name) throw new Error("Missing name");
 
+  const safeName = escapeFormulaValue(name);
   const formula = `AND(
     SEARCH(LOWER("${safeName}"), LOWER({Name})) > 0,
     {${FIELD_DELETED}} = FALSE()
