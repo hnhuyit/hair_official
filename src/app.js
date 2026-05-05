@@ -66,134 +66,367 @@ function airtableHeaders() {
 }
 
 
-// Normalize phone: keep digits, convert +84... -> 0...
-function normalizePhone(raw = "") {
-  const digits = String(raw).replace(/\D/g, "");
-  if (digits.startsWith("84") && digits.length >= 11) return "0" + digits.slice(2);
-  return digits;
+function escapeFormulaValue(value = "") {
+  return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function normalizeName(raw = "") {
-  return String(raw).trim().replace(/\s+/g, " ");
+function maskPhone(phone = "") {
+  const raw = String(phone).replace(/\D/g, "");
+  if (raw.length < 4) return "****";
+  return `****${raw.slice(-4)}`;
 }
 
-function toTime(v) {
-  const t = new Date(v || 0).getTime();
-  return Number.isFinite(t) ? t : 0;
-}
+async function airtableGet(table, query = "") {
+  const url = `${AIRTABLE_URL}/${encodeURIComponent(table)}${query}`;
+  const res = await fetch(url, { headers: airtableHeaders() });
+  const data = await res.json();
 
-async function airtableList({ tableName, filterByFormula, fields = [], pageSize = 100 }) {
-  const params = new URLSearchParams();
-  if (filterByFormula) params.set("filterByFormula", filterByFormula);
-  for (const f of fields) params.append("fields[]", f);
-  params.set("pageSize", String(pageSize));
-
-  const url = `${AIRTABLE_API}/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}?${params.toString()}`;
-  const r = await fetch(url, { headers: airtableHeaders() });
-  const data = await r.json();
-  if (!r.ok) throw new Error(`Airtable error (${r.status}): ${JSON.stringify(data)}`);
-  return data.records || [];
-}
-
-// ===== TOOL IMPLEMENTATION =====
-async function lookupByPhone({ phone }) {
-  const p = normalizePhone(phone);
-  if (!p) {
-    return { content: [{ type: "text", text: JSON.stringify({ found: false, count: 0, members: [] }) }] };
+  if (!res.ok) {
+    throw new Error(data?.error?.message || `Airtable GET error ${res.status}`);
   }
 
-  // Airtable formula: AND({Phone}="0987...", NOT({deleted}))
-  // Checkbox deleted: TRUE/blank
-  const formula = `AND({${FIELD_MEMBER_PHONE}}="${p}", NOT({${FIELD_DELETED}}))`;
+  return data;
+}
 
-  const records = await airtableList({
-    tableName: MEMBERS_TABLE,
-    filterByFormula: formula,
-    fields: [
-      FIELD_MEMBER_NAME,
-      FIELD_MEMBER_PHONE,
-      // "Chapter",
-      // "Department",
-      "member_status",
-      "Bài viết giới thiệu về thành viên",
-      FIELD_DELETED,
-      FIELD_CREATED,
-    ],
+async function airtableCreate(table, fields) {
+  const url = `${AIRTABLE_URL}/${encodeURIComponent(table)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: airtableHeaders(),
+    body: JSON.stringify({ fields }),
   });
 
-  // newest first
-  records.sort((a, b) => toTime(b.fields?.[FIELD_CREATED]) - toTime(a.fields?.[FIELD_CREATED]));
+  const data = await res.json();
 
-  const top = records[0];
-  const members = top
-    ? [
-        {
-          member_id: top.id,
-          Name: top.fields?.[FIELD_MEMBER_NAME] || "",
-          // chapter: top.fields?.["Chapter"] || "",
-          "Bài viết giới thiệu về thành viên": top.fields?.["Bài viết giới thiệu về thành viên"] || "",
-          member_status: top.fields?.["member_status"] || "",
-        },
-      ]
-    : [];
+  if (!res.ok) {
+    throw new Error(data?.error?.message || `Airtable CREATE error ${res.status}`);
+  }
 
-  const payload = { found: members.length > 0, count: records.length, members };
+  return data;
+}
+
+// // Normalize phone: keep digits, convert +84... -> 0...
+// function normalizePhone(raw = "") {
+//   const digits = String(raw).replace(/\D/g, "");
+//   if (digits.startsWith("84") && digits.length >= 11) return "0" + digits.slice(2);
+//   return digits;
+// }
+
+// function normalizeName(raw = "") {
+//   return String(raw).trim().replace(/\s+/g, " ");
+// }
+
+// function toTime(v) {
+//   const t = new Date(v || 0).getTime();
+//   return Number.isFinite(t) ? t : 0;
+// }
+
+// async function airtableList({ tableName, filterByFormula, fields = [], pageSize = 100 }) {
+//   const params = new URLSearchParams();
+//   if (filterByFormula) params.set("filterByFormula", filterByFormula);
+//   for (const f of fields) params.append("fields[]", f);
+//   params.set("pageSize", String(pageSize));
+
+//   const url = `${AIRTABLE_API}/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}?${params.toString()}`;
+//   const r = await fetch(url, { headers: airtableHeaders() });
+//   const data = await r.json();
+//   if (!r.ok) throw new Error(`Airtable error (${r.status}): ${JSON.stringify(data)}`);
+//   return data.records || [];
+// }
+
+// ===== TOOL IMPLEMENTATION =====
+
+async function createUser(args) {
+  const uid = String(args.uid || args.zalo_uid || "").trim();
+  const name = String(args.name || "").trim();
+  const memberStatus = String(args.member_status || "guest").trim();
+
+  if (!uid) throw new Error("Missing uid");
+
+  const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
+
+  const existing = await airtableGet(
+    TABLE_CUSTOMERS,
+    `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
+  );
+
+  if (existing.records?.length) {
+    const record = existing.records[0];
+
+    return {
+      success: true,
+      action: "exists",
+      user: {
+        uid,
+        name: record.fields.Name || name,
+        member_status: record.fields.member_status || memberStatus,
+      },
+    };
+  }
+
+  const created = await airtableCreate(TABLE_CUSTOMERS, {
+    uid: uid,
+    Name: name || "Unknown User",
+    member_status: memberStatus,
+    // Source: "JCI Chatbot",
+    // CreatedAt: new Date().toISOString(),
+  });
 
   return {
-    content: [{ type: "text", text: JSON.stringify(payload) }],
+    success: true,
+    action: "created",
+    user: {
+      uid,
+      name: created.fields.Name,
+      member_status: created.fields.member_status,
+    },
   };
 }
 
-async function lookupByName({ name }) {
-  const n = normalizeName(name);
-  if (!n) {
-    return { content: [{ type: "text", text: JSON.stringify({ found: false, count: 0, members: [] }) }] };
+// async function lookupByPhone({ phone }) {
+//   const p = normalizePhone(phone);
+//   if (!p) {
+//     return { content: [{ type: "text", text: JSON.stringify({ found: false, count: 0, members: [] }) }] };
+//   }
+
+//   // Airtable formula: AND({Phone}="0987...", NOT({deleted}))
+//   // Checkbox deleted: TRUE/blank
+//   const formula = `AND({${FIELD_MEMBER_PHONE}}="${p}", NOT({${FIELD_DELETED}}))`;
+
+//   const records = await airtableList({
+//     tableName: MEMBERS_TABLE,
+//     filterByFormula: formula,
+//     fields: [
+//       FIELD_MEMBER_NAME,
+//       FIELD_MEMBER_PHONE,
+//       // "Chapter",
+//       // "Department",
+//       "member_status",
+//       "Bài viết giới thiệu về thành viên",
+//       FIELD_DELETED,
+//       FIELD_CREATED,
+//     ],
+//   });
+
+//   // newest first
+//   records.sort((a, b) => toTime(b.fields?.[FIELD_CREATED]) - toTime(a.fields?.[FIELD_CREATED]));
+
+//   const top = records[0];
+//   const members = top
+//     ? [
+//         {
+//           member_id: top.id,
+//           Name: top.fields?.[FIELD_MEMBER_NAME] || "",
+//           // chapter: top.fields?.["Chapter"] || "",
+//           "Bài viết giới thiệu về thành viên": top.fields?.["Bài viết giới thiệu về thành viên"] || "",
+//           member_status: top.fields?.["member_status"] || "",
+//         },
+//       ]
+//     : [];
+
+//   const payload = { found: members.length > 0, count: records.length, members };
+
+//   return {
+//     content: [{ type: "text", text: JSON.stringify(payload) }],
+//   };
+// }
+
+async function lookupByPhone(args) {
+  const phone = String(args.phone || "").trim();
+  if (!phone) throw new Error("Missing phone");
+
+  const cleanedPhone = phone.replace(/\D/g, "");
+
+  const formula = `
+    FIND(
+      "${escapeFormulaValue(cleanedPhone)}",
+      SUBSTITUTE(SUBSTITUTE(SUBSTITUTE({phone}, " ", ""), "-", ""), "+", "")
+    ) > 0
+  `;
+
+  const data = await airtableGet(
+    TABLE_CUSTOMERS,
+    `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=5`
+  );
+
+  if (!data.records?.length) {
+    return {
+      found: false,
+      message: "Chưa tìm thấy thành viên phù hợp.",
+      members: [],
+    };
   }
 
-  // SEARCH("Nguyễn Văn A",{FullName}) is case-insensitive
-  // Escape quotes for formula safety
-  const safe = n.replace(/"/g, '\\"');
+  return {
+    found: true,
+    count: data.records.length,
+    members: data.records.map((r) => ({
+      name: r.fields.Name || "",
+      title: r.fields["CHỨC DANH"] || "",
+      member_status: r.fields.member_status || "",
+      membership_status: r.fields.MEMBER || "",
+      chapter: r.fields.Chapter || "",
+      company: r.fields["CÔNG TY"] || "",
+      position: r.fields["CHỨC VỤ"] || "",
+      industry: r.fields["NGÀNH NGHỀ"] || "",
+      phone_masked: maskPhone(r.fields.phone),
+      email_masked: r.fields.mail ? maskEmail(r.fields.mail) : "",
+    })),
+  };
+}
 
-  const tokens = safe.split(/\s+/).filter(Boolean);
-  const andSearch = tokens.map(t => `SEARCH("${t}", {${FIELD_MEMBER_NAME}})`).join(", ");
-  const formula = `AND(${andSearch}, NOT({${FIELD_DELETED}}))`;
+// async function lookupByName({ name }) {
+//   const n = normalizeName(name);
+//   if (!n) {
+//     return { content: [{ type: "text", text: JSON.stringify({ found: false, count: 0, members: [] }) }] };
+//   }
 
-  // const formula = `AND(SEARCH("${safe}", {${FIELD_MEMBER_NAME}}), NOT({${FIELD_DELETED}}))`;
+//   // SEARCH("Nguyễn Văn A",{FullName}) is case-insensitive
+//   // Escape quotes for formula safety
+//   const safe = n.replace(/"/g, '\\"');
 
-  const records = await airtableList({
-    tableName: MEMBERS_TABLE,
-    filterByFormula: formula,
-    fields: [
-      FIELD_MEMBER_NAME,
-      FIELD_MEMBER_PHONE,
-      // "Chapter",
-      // "Department",
-      "member_status",
-      "Bài viết giới thiệu về thành viên",
-      FIELD_DELETED,
-      FIELD_CREATED,
-    ],
-  });
+//   const tokens = safe.split(/\s+/).filter(Boolean);
+//   const andSearch = tokens.map(t => `SEARCH("${t}", {${FIELD_MEMBER_NAME}})`).join(", ");
+//   const formula = `AND(${andSearch}, NOT({${FIELD_DELETED}}))`;
 
-  // newest first
-  records.sort((a, b) => toTime(b.fields?.[FIELD_CREATED]) - toTime(a.fields?.[FIELD_CREATED]));
+//   // const formula = `AND(SEARCH("${safe}", {${FIELD_MEMBER_NAME}}), NOT({${FIELD_DELETED}}))`;
 
-  const members = records.slice(0, 5).map((r) => {
-    const last4 = normalizePhone(r.fields?.[FIELD_MEMBER_PHONE] || "").slice(-4);
+//   const records = await airtableList({
+//     tableName: MEMBERS_TABLE,
+//     filterByFormula: formula,
+//     fields: [
+//       FIELD_MEMBER_NAME,
+//       FIELD_MEMBER_PHONE,
+//       // "Chapter",
+//       // "Department",
+//       "member_status",
+//       "Bài viết giới thiệu về thành viên",
+//       FIELD_DELETED,
+//       FIELD_CREATED,
+//     ],
+//   });
+
+//   // newest first
+//   records.sort((a, b) => toTime(b.fields?.[FIELD_CREATED]) - toTime(a.fields?.[FIELD_CREATED]));
+
+//   const members = records.slice(0, 5).map((r) => {
+//     const last4 = normalizePhone(r.fields?.[FIELD_MEMBER_PHONE] || "").slice(-4);
+//     return {
+//       member_id: r.id,
+//       Name: r.fields?.[FIELD_MEMBER_NAME] || "",
+//       phone_last4: last4,
+//       // chapter: r.fields?.["Chapter"] || "",
+//       "Bài viết giới thiệu về thành viên": r.fields?.["Bài viết giới thiệu về thành viên"] || "",
+//       member_status: r.fields?.["member_status"] || "",
+//     };
+//   });
+
+//   const payload = { found: members.length > 0, count: records.length, members };
+
+//   return {
+//     content: [{ type: "text", text: JSON.stringify(payload) }],
+//   };
+// }
+
+async function lookupByName(args) {
+  const name = String(args.name || "").trim();
+  if (!name) throw new Error("Missing name");
+
+  const formula = `SEARCH(LOWER("${escapeFormulaValue(name)}"), LOWER({Name})) > 0`;
+
+  const data = await airtableGet(
+    TABLE_CUSTOMERS,
+    `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=10`
+  );
+
+  if (!data.records?.length) {
     return {
-      member_id: r.id,
-      Name: r.fields?.[FIELD_MEMBER_NAME] || "",
-      phone_last4: last4,
-      // chapter: r.fields?.["Chapter"] || "",
-      "Bài viết giới thiệu về thành viên": r.fields?.["Bài viết giới thiệu về thành viên"] || "",
-      member_status: r.fields?.["member_status"] || "",
+      found: false,
+      message: "Chưa tìm thấy thành viên phù hợp.",
+      members: [],
     };
-  });
-
-  const payload = { found: members.length > 0, count: records.length, members };
+  }
 
   return {
-    content: [{ type: "text", text: JSON.stringify(payload) }],
+    found: true,
+    count: data.records.length,
+    need_disambiguation: data.records.length > 1,
+    members: data.records.map((r) => ({
+      name: r.fields.Name || "",
+      title: r.fields["CHỨC DANH"] || "",
+      member_status: r.fields.member_status || "",
+      membership_status: r.fields.MEMBER || "",
+      chapter: r.fields.Chapter || "",
+      company: r.fields["CÔNG TY"] || "",
+      position: r.fields["CHỨC VỤ"] || "",
+      industry: r.fields["NGÀNH NGHỀ"] || "",
+      phone_masked: maskPhone(r.fields.phone),
+      email_masked: r.fields.mail ? maskEmail(r.fields.mail) : "",
+    })),
+  };
+}
+
+async function searchPartner(args) {
+  const uid = String(args.uid || "").trim();
+  const memberStatus = String(args.member_status || "").trim();
+  const industry = String(args.industry || "").trim();
+  const limit = Number(args.limit || 3);
+
+  if (!uid) throw new Error("Missing uid");
+  if (!industry) throw new Error("Missing industry");
+
+  // Backend guardrail: guest không được query data nội bộ
+  if (memberStatus !== "member") {
+    return {
+      allowed: false,
+      found: false,
+      message: "Tính năng tra cứu đối tác nội bộ chỉ dành cho thành viên JCI.",
+      results: [],
+    };
+  }
+
+  const keyword = escapeFormulaValue(industry);
+
+  const formula = `
+    OR(
+      SEARCH(LOWER("${keyword}"), LOWER({NGÀNH NGHỀ})) > 0,
+      SEARCH(LOWER("${keyword}"), LOWER({CÔNG TY})) > 0,
+      SEARCH(LOWER("${keyword}"), LOWER({CHỨC VỤ})) > 0,
+      SEARCH(LOWER("${keyword}"), LOWER({CHỨC DANH})) > 0
+    )
+  `;
+
+  const data = await airtableGet(
+    TABLE_CUSTOMERS,
+    `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=${limit}`
+  );
+
+  if (!data.records?.length) {
+    return {
+      allowed: true,
+      found: false,
+      query: industry,
+      message: `Chưa tìm thấy đối tác phù hợp với ngành "${industry}".`,
+      results: [],
+    };
+  }
+
+  return {
+    allowed: true,
+    found: true,
+    query: industry,
+    count: data.records.length,
+    results: data.records.map((r) => ({
+      name: r.fields.Name || "",
+      title: r.fields["CHỨC DANH"] || "",
+      chapter: r.fields.Chapter || "",
+      company: r.fields["CÔNG TY"] || "",
+      position: r.fields["CHỨC VỤ"] || "",
+      industry: r.fields["NGÀNH NGHỀ"] || "",
+      business_description: `${r.fields["CÔNG TY"] || ""} - ${r.fields["NGÀNH NGHỀ"] || ""}`,
+      phone_masked: maskPhone(r.fields.phone),
+      contact_note: "Vui lòng liên hệ BTC để được hỗ trợ kết nối chính thức.",
+    })),
   };
 }
 
@@ -275,8 +508,6 @@ const TOOLS = [
     }
   }
 ];
-
-
 
 // ====== POST /mcp ======
 async function handler(req, res) {
