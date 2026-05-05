@@ -45,7 +45,7 @@ app.use(express.static("public"));
 
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "apptmh0D4kfxxCTn1";
-const MEMBERS_TABLE = process.env.MEMBERS_TABLE || "Customers";
+const TABLE_CUSTOMERS = process.env.TABLE_CUSTOMERS || "Customers";
 
 const FIELD_MEMBER_NAME = process.env.FIELD_MEMBER_NAME || "Name";
 const FIELD_MEMBER_PHONE = process.env.FIELD_MEMBER_PHONE || "phone";
@@ -533,7 +533,7 @@ function log(...args) {
 // ====== POST /mcp ======
 async function handler(req, res) {
   const requestId = Math.random().toString(36).slice(2, 8);
-  log("Incoming request:", JSON.stringify(req.body, null, 2));
+  // log("Incoming request:", JSON.stringify(req.body, null, 2));
   try {
     const { id, method, params } = req.body || {};
 
