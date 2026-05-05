@@ -137,9 +137,12 @@ async function airtableCreate(table, fields) {
 // ===== TOOL IMPLEMENTATION =====
 
 async function createUser(args) {
+  log("createUser called with:", args);
   const uid = String(args.uid || args.zalo_uid || "").trim();
   const name = String(args.name || "").trim();
   const memberStatus = String(args.member_status || "guest").trim();
+
+  log("Parsed:", { uid, name, memberStatus });
 
   if (!uid) throw new Error("Missing uid");
 
@@ -150,7 +153,9 @@ async function createUser(args) {
     `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
   );
 
+  log("Existing result:", existing.records?.length);
   if (existing.records?.length) {
+    log("User exists");
     const record = existing.records[0];
 
     return {
@@ -164,6 +169,7 @@ async function createUser(args) {
     };
   }
 
+  log("Creating new user...");
   const created = await airtableCreate(TABLE_CUSTOMERS, {
     uid: uid,
     Name: name || "Unknown User",
@@ -171,6 +177,7 @@ async function createUser(args) {
     // Source: "JCI Chatbot",
     // CreatedAt: new Date().toISOString(),
   });
+  log("Created user:", created.id);
 
   return {
     success: true,
@@ -232,10 +239,13 @@ async function createUser(args) {
 // }
 
 async function lookupByPhone(args) {
+  log("lookupByPhone called with:", args);
   const phone = String(args.phone || "").trim();
+  log("Raw phone:", phone);
   if (!phone) throw new Error("Missing phone");
 
   const cleanedPhone = phone.replace(/\D/g, "");
+  log("Cleaned phone:", cleanedPhone);
 
   const formula = `
     FIND(
@@ -248,6 +258,7 @@ async function lookupByPhone(args) {
     TABLE_CUSTOMERS,
     `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=5`
   );
+  log("Records found:", data.records?.length);
 
   if (!data.records?.length) {
     return {
@@ -329,6 +340,7 @@ async function lookupByPhone(args) {
 // }
 
 async function lookupByName(args) {
+  log("lookupByName called with:", args);
   const name = String(args.name || "").trim();
   if (!name) throw new Error("Missing name");
 
@@ -338,6 +350,7 @@ async function lookupByName(args) {
     TABLE_CUSTOMERS,
     `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=10`
   );
+  log("Records found:", data.records?.length);
 
   if (!data.records?.length) {
     return {
@@ -367,16 +380,19 @@ async function lookupByName(args) {
 }
 
 async function searchPartner(args) {
+  log("searchPartner called with:", args);
   const uid = String(args.uid || "").trim();
   const memberStatus = String(args.member_status || "").trim();
   const industry = String(args.industry || "").trim();
   const limit = Number(args.limit || 3);
+  log("Parsed:", { uid, memberStatus, industry });
 
   if (!uid) throw new Error("Missing uid");
   if (!industry) throw new Error("Missing industry");
 
   // Backend guardrail: guest không được query data nội bộ
   if (memberStatus !== "member") {
+    log("BLOCKED: Non-member tried to access partner search");
     return {
       allowed: false,
       found: false,
@@ -400,6 +416,7 @@ async function searchPartner(args) {
     TABLE_CUSTOMERS,
     `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=${limit}`
   );
+  log("Partner results:", data.records?.length);
 
   if (!data.records?.length) {
     return {
@@ -509,18 +526,27 @@ const TOOLS = [
   }
 ];
 
+function log(...args) {
+  console.log("[MCP]", ...args);
+}
+
 // ====== POST /mcp ======
 async function handler(req, res) {
+  const requestId = Math.random().toString(36).slice(2, 8);
+  log("Incoming request:", JSON.stringify(req.body, null, 2));
   try {
     const { id, method, params } = req.body || {};
 
     if (!method) {
+      log(`[${requestId}] ERROR: Missing method`);
       const out = err(id ?? null, -32600, "Invalid Request");
       return res.status(out.status).json(out.body);
     }
+    log(`[${requestId}] Method:`, method);
 
     // 1. MCP initialize
     if (method === "initialize") {
+      log(`[${requestId}] initialize called`);
       const out = ok(id, {
         protocolVersion: "2025-06-18",
         serverInfo: {
@@ -537,6 +563,8 @@ async function handler(req, res) {
 
     // 2. MCP tools/list
     if (method === "tools/list") {
+      log(`[${requestId}] tools/list called`);
+      log(`[${requestId}] Tools:`, TOOLS.map(t => t.name));
       const out = ok(id, {
         tools: TOOLS
       });
@@ -549,19 +577,25 @@ async function handler(req, res) {
       const toolName = params?.name;
       const args = params?.arguments || {};
 
+      log(`[${requestId}] Tool call:`, toolName);
+      log(`[${requestId}] Args:`, JSON.stringify(args));
+
       if (!toolName) {
+        log(`[${requestId}] ERROR: Missing tool name`);
         const out = err(id, -32602, "Missing tool name");
         return res.status(out.status).json(out.body);
       }
 
       // ===== USER CREATE =====
       if (toolName === "user.create") {
+        log(`[${requestId}] → createUser()`);
         if (!args.uid) {
           const out = err(id, -32602, "Missing uid");
           return res.status(out.status).json(out.body);
         }
 
         const result = await createUser(args);
+        log(`[${requestId}] createUser result:`, result);
 
         const out = ok(id, {
           content: [
@@ -572,17 +606,20 @@ async function handler(req, res) {
           ]
         });
 
+        log(`[${requestId}] Response sent`);
         return res.status(out.status).json(out.body);
       }
 
       // ===== MEMBER LOOKUP BY PHONE =====
       if (toolName === "member.lookup_by_phone") {
+        log(`[${requestId}] → lookupByPhone()`);
         if (!args.phone) {
           const out = err(id, -32602, "Missing phone");
           return res.status(out.status).json(out.body);
         }
 
         const result = await lookupByPhone(args);
+        log(`[${requestId}] lookupByPhone result count:`, result?.count);
 
         const out = ok(id, {
           content: [
@@ -598,12 +635,14 @@ async function handler(req, res) {
 
       // ===== MEMBER LOOKUP BY NAME =====
       if (toolName === "member.lookup_by_name") {
+        log(`[${requestId}] → lookupByName()`);
         if (!args.name) {
           const out = err(id, -32602, "Missing name");
           return res.status(out.status).json(out.body);
         }
 
         const result = await lookupByName(args);
+        log(`[${requestId}] lookupByName result count:`, result?.count);
 
         const out = ok(id, {
           content: [
@@ -619,12 +658,14 @@ async function handler(req, res) {
 
       // ===== PARTNER SEARCH - MEMBER ONLY =====
       if (toolName === "partner.search") {
+        log(`[${requestId}] → searchPartner()`);
         if (!args.uid) {
           const out = err(id, -32602, "Missing uid");
           return res.status(out.status).json(out.body);
         }
 
         if (args.member_status !== "member") {
+          log(`[${requestId}] BLOCKED: non-member access`);
           const out = ok(id, {
             content: [
               {
@@ -651,6 +692,7 @@ async function handler(req, res) {
           industry: args.industry,
           limit: args.limit || 3
         });
+        log(`[${requestId}] partner results:`, result?.count);
 
         const out = ok(id, {
           content: [
