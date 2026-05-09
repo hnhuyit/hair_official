@@ -189,11 +189,7 @@ async function airtableCreate(table, fields) {
 async function getMemberStatusByUid(uid) {
   if (!uid) return "guest";
 
-  // const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
-  const formula = `AND(
-    {uid} = "${escapeFormulaValue(uid)}",
-    {${FIELD_DELETED}} = FALSE()
-  )`;
+  const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
   const data = await airtableGet(
     TABLE_CUSTOMERS,
     `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
@@ -237,7 +233,11 @@ async function createUser(args) {
     };
   }
 
-  const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
+  // const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
+  const formula = `AND(
+    {uid} = "${escapeFormulaValue(uid)}",
+    {${FIELD_DELETED}} = FALSE()
+  )`;
 
   const existing = await airtableGet(
     TABLE_CUSTOMERS,
