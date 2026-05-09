@@ -1,6 +1,6 @@
 // src/controllers/zalo.controller.js
 import { handleAIReply } from "../services/aiResponder.js";
-import { replyZalo, processZaloMessage } from "../services/zaloService.js";
+import { replyZalo } from "../services/zaloService.js";
 
 import { refreshOAToken, getOAToken, fetchConfigFromAirtable, updateLastInteractionOnlyIfNewDay} from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
 import { saveMessage, getRecentMessages } from "../services/airtableService.js";
@@ -43,19 +43,19 @@ async function getZaloUserProfile(userId) {
 }
 
 
-function verifyZaloSignature(req) {
-  const signature = req.headers["x-zevent-signature"];
-  const timestamp = req.body.timestamp;
+// function verifyZaloSignature(req) {
+//   const signature = req.headers["x-zevent-signature"];
+//   const timestamp = req.body.timestamp;
 
-  const data = req.rawBody;
+//   const data = req.rawBody;
 
-  const raw = APP_ID + data + timestamp + OA_SECRET_KEY;
+//   const raw = APP_ID + data + timestamp + OA_SECRET_KEY;
 
-  const expectedSignature =
-    "mac=" + crypto.createHash("sha256").update(raw).digest("hex");
+//   const expectedSignature =
+//     "mac=" + crypto.createHash("sha256").update(raw).digest("hex");
 
-  return signature === expectedSignature;
-}
+//   return signature === expectedSignature;
+// }
 
 
 export async function handleMessZaloOA(req, res, next) {
@@ -189,6 +189,7 @@ export async function handleZaloWebhook(req, res, next) {
     next(err);
   }
 }
+
 export async function handleZaloOAGroupWebhook(req, res) {
   res.status(200).json({ success: true });
 
