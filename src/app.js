@@ -189,8 +189,11 @@ async function airtableCreate(table, fields) {
 async function getMemberStatusByUid(uid) {
   if (!uid) return "guest";
 
-  const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
-
+  // const formula = `{uid} = "${escapeFormulaValue(uid)}"`;
+  const formula = `AND(
+    {uid} = "${escapeFormulaValue(uid)}",
+    {${FIELD_DELETED}} = FALSE()
+  )`;
   const data = await airtableGet(
     TABLE_CUSTOMERS,
     `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
