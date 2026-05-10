@@ -13,24 +13,27 @@ const router = express.Router();
 
 // GET xác thực webhook (nếu cần)
 router.get("/webhook", verifyWebhook);
-router.get("/ig-webhook", verifyWebhookIG);
-// router.get("/fb-webhook", verifyWebhookFB);
-router.get("/wa-webhook", verifyWebhookWA);
-// router.get("/messaging-webhook", verifyWebhookMessager); //webhook cũ 
-
-
-// POST xử lý webhook từ Zalo
+router.post("/webhook", handleMessZaloOA);
+// POST xử lý webhook từ Zalo old
 // router.post("/webhook", handleZaloWebhook);
 
-// POST xử lý webhook từ Zalo
-router.post("/webhook", handleMessZaloOA);
-router.post(  "/webhook",  verifyZaloSignature,  handleZaloOAGroupWebhook);
-
+router.get("/ig-webhook", verifyWebhookIG);
 router.post("/ig-webhook", handleIGWebhook);
-// router.post("/fb-webhook", handleFacebookWebhook);
-// router.post("/fb-webhook", handleWithAIAgent);
-router.post("/wa-webhook", handleWAWebhook);
+
+// router.get("/messaging-webhook", verifyWebhookMessager); //webhook cũ 
 // router.post("/messaging-webhook", handleMessagerWebhook);
+// router.get("/fb-webhook", verifyWebhookFB);
+// router.post("/fb-webhook", handleFacebookWebhook);
+
+router.get("/wa-webhook", verifyWebhookWA);
+router.post("/wa-webhook", handleWAWebhook);
+
+
+// POST xử lý webhook từ Zalo OA Group
+// router.get("/webhook-group-zalooa", verifyWebhook);
+// router.post("/webhook-group-zalooa",  verifyZaloSignature,  handleZaloOAGroupWebhook);
+
+// router.post("/fb-webhook", handleWithAIAgent);
 
 
 router.get("/webhook-anna-fb", verifyWebhookAnnaFB);

@@ -597,6 +597,90 @@ async function searchPartner(args) {
     results: topCandidates.map(({ _text, _score, ...rest }) => rest),
   };
 }
+const INDUSTRIES = [
+  "beauty",
+  "construction",
+  "education",
+  "finance",
+  "fnb",
+  "healthcare",
+  "it_software",
+  "logistics",
+  "manufacturing",
+  "marketing",
+  "media",
+  "real_estate",
+  "retail",
+  "startup",
+  "technology",
+  "tourism",
+  "training",
+  "other"
+];
+
+const DEMAND_TYPES = [
+  "business_connection",
+  "partner_connection",
+  "client_search",
+  "mentor_connection",
+  "investment_connection",
+  "learning_interest",
+  "service_inquiry",
+  "solution_consulting",
+  "ai_application",
+  "marketing_support",
+  "operation_support",
+  "recruitment_need",
+  "event_interest",
+  "project_collaboration",
+  "other"
+];
+
+async function collectContext(args) {
+  const {
+    uid,
+    message,
+    demand_summary,
+    demand_type,
+    industry,
+    source = "user_message"
+  } = args;
+
+  if (!INDUSTRIES.includes(industry)) {
+    throw new Error(`Invalid industry: ${industry}`);
+  }
+
+  if (!DEMAND_TYPES.includes(demand_type)) {
+    throw new Error(`Invalid demand_type: ${demand_type}`);
+  }
+
+  const created = await airtableCreate("collect", {
+    uid,
+    message,
+    demand_summary,
+    demand_type,
+    industry,
+    source,
+    status: "open"
+    // created_at: new Date().toISOString(),
+  });
+
+  log("Created collect context:", created.id);
+
+  return {
+    success: true,
+    action: "created",
+    collect: {
+      id: created.id,
+      uid,
+      demand_summary,
+      demand_type,
+      industry,
+      source,
+      status: "open"
+    }
+  };
+}
 
 // ===== JSON-RPC HELPERS =====
 function ok(id, result) {
@@ -671,6 +755,41 @@ const TOOLS = [
         limit: { type: "number", default: 3 }
       },
       required: ["uid", "member_status", "industry"]
+    }
+  },
+  {
+    name: "context.collect",
+    description: "Collect one demand context from user message for JCI community intelligence.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        uid: { type: "string" },
+        message: { type: "string" },
+        demand_summary: { type: "string" },
+        demand_type: {
+          type: "string",
+          enum: DEMAND_TYPES
+        },
+        industry: {
+          type: "string",
+          enum: INDUSTRIES
+        },
+        quantity: {
+          type: "number",
+          description: "Always 1 for each valid demand record."
+        },
+        source: {
+          type: "string",
+          enum: ["user_message"]
+        }
+      },
+      required: [
+        "uid",
+        "message",
+        "demand_summary",
+        "demand_type",
+        "industry"
+      ]
     }
   }
 ];
@@ -843,6 +962,59 @@ async function handler(req, res) {
           limit: args.limit || 3
         });
         log(`[${requestId}] partner results:`, result?.count);
+
+        const out = ok(id, {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result)
+            }
+          ]
+        });
+
+        return res.status(out.status).json(out.body);
+      }
+
+      // ===== CONTEXT COLLECT =====
+      if (toolName === "context.collect") {
+        log(`[${requestId}] → collectContext()`);
+
+        if (!args.uid) {
+          const out = err(id, -32602, "Missing uid");
+          return res.status(out.status).json(out.body);
+        }
+
+        if (!args.message) {
+          const out = err(id, -32602, "Missing message");
+          return res.status(out.status).json(out.body);
+        }
+
+        if (!args.demand_summary) {
+          const out = err(id, -32602, "Missing demand_summary");
+          return res.status(out.status).json(out.body);
+        }
+
+        if (!args.demand_type) {
+          const out = err(id, -32602, "Missing demand_type");
+          return res.status(out.status).json(out.body);
+        }
+
+        if (!args.industry) {
+          const out = err(id, -32602, "Missing industry");
+          return res.status(out.status).json(out.body);
+        }
+
+        const result = await collectContext({
+          uid: args.uid,
+          message: args.message,
+          demand_summary: args.demand_summary,
+          demand_type: args.demand_type,
+          industry: args.industry,
+          quantity: 1,
+          source: args.source || "user_message"
+        });
+
+        log(`[${requestId}] collectContext result:`, result);
 
         const out = ok(id, {
           content: [

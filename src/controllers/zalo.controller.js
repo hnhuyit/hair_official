@@ -4,7 +4,6 @@ import { replyZalo } from "../services/zaloService.js";
 
 import { refreshOAToken, getOAToken, fetchConfigFromAirtable, updateLastInteractionOnlyIfNewDay} from "../config/index.js"; // Nếu bạn có gói logic refresh token vào config hoặc service riêng
 import { saveMessage, getRecentMessages } from "../services/airtableService.js";
-// Các hàm lưu lịch sử, cập nhật Airtable, … có thể được chuyển vào một module riêng (ví dụ airtableService)
 
 export async function verifyWebhook(req, res) {
   // Đơn giản trả về echostr nếu có logic xác thực cho GET webhook
@@ -18,10 +17,6 @@ function isMessageFromOA(payload) {
 
   return senderId === oaId;
 }
-
-const APP_ID = process.env.ZALO_APP_ID;
-const OA_SECRET_KEY = process.env.ZALO_OA_SECRET_KEY;
-// const OA_ACCESS_TOKEN = process.env.ZALO_OA_ACCESS_TOKEN;
 
 async function getZaloUserProfile(userId) {
   const url = `https://openapi.zalo.me/v2.0/oa/getprofile?user_id=${userId}`;
@@ -43,20 +38,178 @@ async function getZaloUserProfile(userId) {
 }
 
 
-// function verifyZaloSignature(req) {
-//   const signature = req.headers["x-zevent-signature"];
-//   const timestamp = req.body.timestamp;
+function verifyZaloSignature(req) {
+  const signature = req.headers["x-zevent-signature"];
+  const timestamp = req.body.timestamp;
 
-//   const data = req.rawBody;
+  const data = req.rawBody;
 
-//   const raw = APP_ID + data + timestamp + OA_SECRET_KEY;
+  const raw = APP_ID + data + timestamp + OA_SECRET_KEY;
 
-//   const expectedSignature =
-//     "mac=" + crypto.createHash("sha256").update(raw).digest("hex");
+  const expectedSignature =
+    "mac=" + crypto.createHash("sha256").update(raw).digest("hex");
 
-//   return signature === expectedSignature;
-// }
+  return signature === expectedSignature;
+}
 
+const ZALO_GROUP_MAP = {
+  // Thay bằng recipient.id thực tế của group OA 1
+  "GROUP_ID_OA_1": {
+    group_key: "group_oa_1",
+    group_name: "Group OA 1"
+  },
+
+  // Thay bằng recipient.id thực tế của group OA 2
+  "GROUP_ID_OA_2": {
+    group_key: "group_oa_2",
+    group_name: "Group OA 2"
+  }
+};
+
+function getZaloChannel(payload) {
+  const eventName = payload?.event_name || payload?.event;
+
+  if (eventName === "user_send_group_text") {
+    return "group";
+  }
+
+  if (eventName === "user_send_text") {
+    return "direct";
+  }
+
+  return "unknown";
+}
+
+function getZaloText(payload) {
+  return (
+    payload?.message?.text ??
+    payload?.message?.content?.text ??
+    payload?.text ??
+    null
+  );
+}
+
+
+function getZaloSenderId(payload) {
+  return (
+    payload?.user_id_by_app ??
+    payload?.sender?.id ??
+    payload?.sender?.user_id ??
+    null
+  );
+}
+
+function getZaloGroupId(payload) {
+  return payload?.recipient?.id ?? null;
+}
+
+//bắt zalo oa và zalo oa group
+export async function handleMessZaloOA(req, res, next) {
+  // 1) Trả 200 sớm cho Zalo
+  res.status(200).send("OK");
+
+  try {
+    const payload = req.body;
+
+    // 2) Bỏ qua nếu OA tự gửi
+    if (isMessageFromOA(payload)) {
+      console.log("⛔ Ignore message from OA");
+      return;
+    }
+
+    const eventName = payload?.event_name ?? payload?.event ?? null;
+    const channel = getZaloChannel(payload);
+
+    const senderId = getZaloSenderId(payload);
+    const text = getZaloText(payload);
+    const groupId = getZaloGroupId(payload);
+
+    const groupConfig =
+      channel === "group"
+        ? ZALO_GROUP_MAP[groupId] || null
+        : null;
+
+    const msgId = payload?.message?.msg_id ?? null;
+
+    // 3) Chỉ xử lý text user/direct/group
+    const allowedEvents = [
+      "user_send_text",
+      "user_send_group_text"
+    ];
+
+    if (!allowedEvents.includes(eventName)) {
+      console.log("⚠️ Ignore unsupported Zalo event:", eventName);
+      return;
+    }
+
+    // 4) Nếu là group nhưng chưa map thì vẫn gửi Airtable để debug
+    if (channel === "group" && !groupConfig) {
+      console.log("⚠️ Group chưa được cấu hình:", groupId);
+    }
+
+    // 5) Chuẩn hoá payload gửi sang Airtable
+    const airtablePayload = {
+      source: "zalo_oa",
+      received_at: new Date().toISOString(),
+
+      app_id: payload?.app_id ?? null,
+      oa_id: payload?.oa_id ?? null,
+      event_name: eventName,
+
+      channel, // direct | group | unknown
+
+      // Direct user
+      user_id: senderId,
+
+      // Group
+      group_id: groupId,
+      group_key: groupConfig?.group_key ?? null,
+      group_name: groupConfig?.group_name ?? null,
+
+      // Message
+      msg_id: msgId,
+      text,
+
+      raw: payload
+    };
+
+    const url =
+      process.env.AIRTABLE_AUTOMATION_WEBHOOK_URL ||
+      "https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wfl3Cq8ckREYevPae/wtrtQUhGM3HS7Bsr8";
+
+    if (!url) {
+      console.error("Missing AIRTABLE_AUTOMATION_WEBHOOK_URL");
+      return;
+    }
+
+    const airtableRes = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(airtablePayload)
+    });
+
+    const data = await airtableRes.json().catch(() => null);
+
+    if (!airtableRes.ok) {
+      console.error("Airtable webhook FAILED:", {
+        status: airtableRes.status,
+        data
+      });
+    } else {
+      console.log("✅ Airtable webhook OK:", {
+        channel,
+        group_key: airtablePayload.group_key,
+        text,
+        data
+      });
+    }
+
+  } catch (err) {
+    console.error("❌ handleMessZaloOA ERROR:", err.message);
+  }
+}
 
 export async function handleMessZaloOA(req, res, next) {
   // 1) OPTIONAL: verify signature
@@ -187,61 +340,5 @@ export async function handleZaloWebhook(req, res, next) {
   } catch (err) {
     console.error("🔥 Lỗi webhook:", err);
     next(err);
-  }
-}
-
-export async function handleZaloOAGroupWebhook(req, res) {
-  res.status(200).json({ success: true });
-
-  try {
-    const body = req.body;
-
-    const eventName = body.event_name;
-    const groupId = body.recipient?.id;
-    const userId = body.user_id_by_app;
-    const senderId = body.sender?.id;
-    const oaId = body.oa_id;
-    const message = body.message || {};
-    const text = message.text || "";
-    const msgId = message.msg_id;
-    const timestamp = body.timestamp;
-
-    console.log("📩 Zalo Group Webhook:", {
-      eventName,
-      groupId,
-      userId,
-      senderId,
-      oaId,
-      text,
-      msgId,
-      timestamp
-    });
-
-    // switch (eventName) {
-    //   case "user_send_group_text": {
-    //     await processZaloGroupTextMessage({
-    //       platform: "zalo_oa_group",
-    //       eventName,
-    //       groupId,
-    //       userId,
-    //       senderId,
-    //       oaId,
-    //       text,
-    //       msgId,
-    //       timestamp,
-    //       raw: body
-    //     });
-
-    //     break;
-    //   }
-
-    //   default: {
-    //     console.log("Unknown Zalo group event:", eventName);
-    //     break;
-    //   }
-    // }
-
-  } catch (error) {
-    console.error("❌ Zalo Group Webhook Error:", error);
   }
 }
