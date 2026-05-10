@@ -103,113 +103,113 @@ function getZaloGroupId(payload) {
   return payload?.recipient?.id ?? null;
 }
 
-//bắt zalo oa và zalo oa group
-export async function handleMessZaloOA(req, res, next) {
-  // 1) Trả 200 sớm cho Zalo
-  res.status(200).send("OK");
+// //bắt zalo oa và zalo oa group
+// export async function handleMessZaloOA(req, res, next) {
+//   // 1) Trả 200 sớm cho Zalo
+//   res.status(200).send("OK");
 
-  try {
-    const payload = req.body;
+//   try {
+//     const payload = req.body;
 
-    // 2) Bỏ qua nếu OA tự gửi
-    if (isMessageFromOA(payload)) {
-      console.log("⛔ Ignore message from OA");
-      return;
-    }
+//     // 2) Bỏ qua nếu OA tự gửi
+//     if (isMessageFromOA(payload)) {
+//       console.log("⛔ Ignore message from OA");
+//       return;
+//     }
 
-    const eventName = payload?.event_name ?? payload?.event ?? null;
-    const channel = getZaloChannel(payload);
+//     const eventName = payload?.event_name ?? payload?.event ?? null;
+//     const channel = getZaloChannel(payload);
 
-    const senderId = getZaloSenderId(payload);
-    const text = getZaloText(payload);
-    const groupId = getZaloGroupId(payload);
+//     const senderId = getZaloSenderId(payload);
+//     const text = getZaloText(payload);
+//     const groupId = getZaloGroupId(payload);
 
-    const groupConfig =
-      channel === "group"
-        ? ZALO_GROUP_MAP[groupId] || null
-        : null;
+//     const groupConfig =
+//       channel === "group"
+//         ? ZALO_GROUP_MAP[groupId] || null
+//         : null;
 
-    const msgId = payload?.message?.msg_id ?? null;
+//     const msgId = payload?.message?.msg_id ?? null;
 
-    // 3) Chỉ xử lý text user/direct/group
-    const allowedEvents = [
-      "user_send_text",
-      "user_send_group_text"
-    ];
+//     // 3) Chỉ xử lý text user/direct/group
+//     const allowedEvents = [
+//       "user_send_text",
+//       "user_send_group_text"
+//     ];
 
-    if (!allowedEvents.includes(eventName)) {
-      console.log("⚠️ Ignore unsupported Zalo event:", eventName);
-      return;
-    }
+//     if (!allowedEvents.includes(eventName)) {
+//       console.log("⚠️ Ignore unsupported Zalo event:", eventName);
+//       return;
+//     }
 
-    // 4) Nếu là group nhưng chưa map thì vẫn gửi Airtable để debug
-    if (channel === "group" && !groupConfig) {
-      console.log("⚠️ Group chưa được cấu hình:", groupId);
-    }
+//     // 4) Nếu là group nhưng chưa map thì vẫn gửi Airtable để debug
+//     if (channel === "group" && !groupConfig) {
+//       console.log("⚠️ Group chưa được cấu hình:", groupId);
+//     }
 
-    // 5) Chuẩn hoá payload gửi sang Airtable
-    const airtablePayload = {
-      source: "zalo_oa",
-      received_at: new Date().toISOString(),
+//     // 5) Chuẩn hoá payload gửi sang Airtable
+//     const airtablePayload = {
+//       source: "zalo_oa",
+//       received_at: new Date().toISOString(),
 
-      app_id: payload?.app_id ?? null,
-      oa_id: payload?.oa_id ?? null,
-      event_name: eventName,
+//       app_id: payload?.app_id ?? null,
+//       oa_id: payload?.oa_id ?? null,
+//       event_name: eventName,
 
-      channel, // direct | group | unknown
+//       channel, // direct | group | unknown
 
-      // Direct user
-      user_id: senderId,
+//       // Direct user
+//       user_id: senderId,
 
-      // Group
-      group_id: groupId,
-      group_key: groupConfig?.group_key ?? null,
-      group_name: groupConfig?.group_name ?? null,
+//       // Group
+//       group_id: groupId,
+//       group_key: groupConfig?.group_key ?? null,
+//       group_name: groupConfig?.group_name ?? null,
 
-      // Message
-      msg_id: msgId,
-      text,
+//       // Message
+//       msg_id: msgId,
+//       text,
 
-      raw: payload
-    };
+//       raw: payload
+//     };
 
-    const url =
-      process.env.AIRTABLE_AUTOMATION_WEBHOOK_URL ||
-      "https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wfl3Cq8ckREYevPae/wtrtQUhGM3HS7Bsr8";
+//     const url =
+//       process.env.AIRTABLE_AUTOMATION_WEBHOOK_URL ||
+//       "https://hooks.airtable.com/workflows/v1/genericWebhook/apptmh0D4kfxxCTn1/wfl3Cq8ckREYevPae/wtrtQUhGM3HS7Bsr8";
 
-    if (!url) {
-      console.error("Missing AIRTABLE_AUTOMATION_WEBHOOK_URL");
-      return;
-    }
+//     if (!url) {
+//       console.error("Missing AIRTABLE_AUTOMATION_WEBHOOK_URL");
+//       return;
+//     }
 
-    const airtableRes = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(airtablePayload)
-    });
+//     const airtableRes = await fetch(url, {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json"
+//       },
+//       body: JSON.stringify(airtablePayload)
+//     });
 
-    const data = await airtableRes.json().catch(() => null);
+//     const data = await airtableRes.json().catch(() => null);
 
-    if (!airtableRes.ok) {
-      console.error("Airtable webhook FAILED:", {
-        status: airtableRes.status,
-        data
-      });
-    } else {
-      console.log("✅ Airtable webhook OK:", {
-        channel,
-        group_key: airtablePayload.group_key,
-        text,
-        data
-      });
-    }
+//     if (!airtableRes.ok) {
+//       console.error("Airtable webhook FAILED:", {
+//         status: airtableRes.status,
+//         data
+//       });
+//     } else {
+//       console.log("✅ Airtable webhook OK:", {
+//         channel,
+//         group_key: airtablePayload.group_key,
+//         text,
+//         data
+//       });
+//     }
 
-  } catch (err) {
-    console.error("❌ handleMessZaloOA ERROR:", err.message);
-  }
-}
+//   } catch (err) {
+//     console.error("❌ handleMessZaloOA ERROR:", err.message);
+//   }
+// }
 
 export async function handleMessZaloOA(req, res, next) {
   // 1) OPTIONAL: verify signature
